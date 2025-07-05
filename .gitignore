@@ -1,0 +1,40 @@
+# macOS system files
+.DS_Store
+
+# JUCE build products
+Builds/
+*.jucer.user
+*.jucer.bak
+
+# IDE specific files
+.idea/
+.vscode/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcworkspace/xcshareddata/
+*.xcuserdatad/
+
+# Compiled binaries and libraries
+*.o
+*.a
+*.lib
+*.dll
+*.dylib
+*.so
+*.exe
+
+# Plugin specific files
+*.vst3
+*.component
+*.aaxplugin
+*.app
+*.appex
+*.vst
+*.au
+*.auvaltool
+
+# Other common temporary files
+*.bak
+*.tmp
+*.log
+*.swp
