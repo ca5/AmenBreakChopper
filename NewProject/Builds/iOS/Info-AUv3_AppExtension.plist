@@ -22,9 +22,9 @@
     <key>CFBundleSignature</key>
     <string>????</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.0.1</string>
+    <string>0.0.2</string>
     <key>CFBundleVersion</key>
-    <string>0.0.1</string>
+    <string>0.0.2</string>
     <key>NSHumanReadableCopyright</key>
     <string></string>
     <key>NSHighResolutionCapable</key>
@@ -49,16 +49,16 @@
             <key>manufacturer</key>
             <string>Manu</string>
             <key>type</key>
-            <string>aumu</string>
+            <string>aumf</string>
             <key>subtype</key>
             <string>Guwk</string>
             <key>version</key>
-            <integer>1</integer>
+            <integer>2</integer>
             <key>sandboxSafe</key>
             <true/>
             <key>tags</key>
             <array>
-              <string>Synth</string>
+              <string>Effects</string>
             </array>
           </dict>
         </array>

@@ -656,7 +656,7 @@
 			name = "Update manifest";
 			alwaysOutOfDate = 1;
 			shellPath = /bin/sh;
-			shellScript = "set -euo pipefail\n\necho Running codesign --verbose=4 --force --sign - \\\"${CONFIGURATION_BUILD_DIR}/${WRAPPER_NAME}\\\"\ncodesign --verbose=4 --force --sign - \"${CONFIGURATION_BUILD_DIR}/${WRAPPER_NAME}\"\n\necho Running \\\"${CONFIGURATION_BUILD_DIR}/juce_vst3_helper\\\" -create -version \\\"0.0.1\\\" -path \\\"${CONFIGURATION_BUILD_DIR}/${WRAPPER_NAME}\\\" -output \\\"${CONFIGURATION_BUILD_DIR}/${WRAPPER_NAME}/Contents/Resources/moduleinfo.json\\\"\n\"${CONFIGURATION_BUILD_DIR}/juce_vst3_helper\" -create -version \"0.0.1\" -path \"${CONFIGURATION_BUILD_DIR}/${WRAPPER_NAME}\" -output \"${CONFIGURATION_BUILD_DIR}/${WRAPPER_NAME}/Contents/Resources/moduleinfo.json\"\n";
+			shellScript = "set -euo pipefail\n\necho Running codesign --verbose=4 --force --sign - \\\"${CONFIGURATION_BUILD_DIR}/${WRAPPER_NAME}\\\"\ncodesign --verbose=4 --force --sign - \"${CONFIGURATION_BUILD_DIR}/${WRAPPER_NAME}\"\n\necho Running \\\"${CONFIGURATION_BUILD_DIR}/juce_vst3_helper\\\" -create -version \\\"0.0.2\\\" -path \\\"${CONFIGURATION_BUILD_DIR}/${WRAPPER_NAME}\\\" -output \\\"${CONFIGURATION_BUILD_DIR}/${WRAPPER_NAME}/Contents/Resources/moduleinfo.json\\\"\n\"${CONFIGURATION_BUILD_DIR}/juce_vst3_helper\" -create -version \"0.0.2\" -path \"${CONFIGURATION_BUILD_DIR}/${WRAPPER_NAME}\" -output \"${CONFIGURATION_BUILD_DIR}/${WRAPPER_NAME}/Contents/Resources/moduleinfo.json\"\n";
 		};
 		8DA53CC670C6D450DDD4B8A2 /* Plugin Copy Step */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -793,7 +793,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CONFIGURATION_BUILD_DIR = "$(PROJECT_DIR)/build/$(CONFIGURATION)";
 				DEAD_CODE_STRIPPING = YES;
-				EXCLUDED_ARCHS = "";
+				EXCLUDED_ARCHS = "i386 arm64e";
 				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
 				GCC_OPTIMIZATION_LEVEL = 3;
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -832,18 +832,18 @@
 					"JucePlugin_ManufacturerEmail=\\\"\\\"",
 					"JucePlugin_ManufacturerCode=0x4d616e75",
 					"JucePlugin_PluginCode=0x4775776b",
-					"JucePlugin_IsSynth=1",
+					"JucePlugin_IsSynth=0",
 					"JucePlugin_WantsMidiInput=1",
-					"JucePlugin_ProducesMidiOutput=1",
+					"JucePlugin_ProducesMidiOutput=0",
 					"JucePlugin_IsMidiEffect=0",
 					"JucePlugin_EditorRequiresKeyboardFocus=1",
-					"JucePlugin_Version=0.0.1",
-					"JucePlugin_VersionCode=0x1",
-					"JucePlugin_VersionString=\\\"0.0.1\\\"",
+					"JucePlugin_Version=0.0.2",
+					"JucePlugin_VersionCode=0x2",
+					"JucePlugin_VersionString=\\\"0.0.2\\\"",
 					"JucePlugin_VSTUniqueID=JucePlugin_PluginCode",
-					"JucePlugin_VSTCategory=kPlugCategSynth",
-					"JucePlugin_Vst3Category=\\\"Instrument|Synth\\\"",
-					"JucePlugin_AUMainType=\\'aumu\\'",
+					"JucePlugin_VSTCategory=kPlugCategEffect",
+					"JucePlugin_Vst3Category=\\\"Fx\\\"",
+					"JucePlugin_AUMainType=\\'aumf\\'",
 					"JucePlugin_AUSubType=JucePlugin_PluginCode",
 					"JucePlugin_AUExportPrefix=ABCAU",
 					"JucePlugin_AUExportPrefixQuoted=\\\"ABCAU\\\"",
@@ -852,10 +852,10 @@
 					"JucePlugin_AAXIdentifier=com.yourcompany.ABC",
 					"JucePlugin_AAXManufacturerCode=JucePlugin_ManufacturerCode",
 					"JucePlugin_AAXProductId=JucePlugin_PluginCode",
-					"JucePlugin_AAXCategory=2048",
+					"JucePlugin_AAXCategory=0",
 					"JucePlugin_AAXDisableBypass=0",
 					"JucePlugin_AAXDisableMultiMono=0",
-					"JucePlugin_IAAType=0x61757269",
+					"JucePlugin_IAAType=0x6175726d",
 					"JucePlugin_IAASubType=JucePlugin_PluginCode",
 					"JucePlugin_IAAName=\\\"Ca5:\\ ABC\\\"",
 					"JucePlugin_VSTNumMidiInputs=16",
@@ -863,12 +863,12 @@
 					"JucePlugin_ARAContentTypes=0",
 					"JucePlugin_ARATransformationFlags=0",
 					"JucePlugin_ARAFactoryID=\\\"com.yourcompany.ABC.factory\\\"",
-					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.ABC.aradocumentarchive.0.0.1\\\"",
+					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.ABC.aradocumentarchive.0.0.2\\\"",
 					"JucePlugin_ARACompatibleArchiveIDs=\\\"\\\"",
 					"JUCE_STANDALONE_APPLICATION=JucePlugin_Build_Standalone",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
-					"JUCE_APP_VERSION=0.0.1",
-					"JUCE_APP_VERSION_HEX=0x1",
+					"JUCE_APP_VERSION=0.0.2",
+					"JUCE_APP_VERSION_HEX=0x2",
 				);
 				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
 				GENERATE_PKGINFO_FILE = YES;
@@ -891,7 +891,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.ABC;
 				PRODUCT_NAME = "NewProject";
 				USE_HEADERMAP = NO;
-				VALID_ARCHS = "i386 x86_64 arm64 arm64e";
+				VALID_ARCHS = "arm64 x86_64";
 				WRAPPER_EXTENSION = component;
 			};
 			name = Release;
@@ -905,7 +905,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CONFIGURATION_BUILD_DIR = "$(PROJECT_DIR)/build/$(CONFIGURATION)";
 				COPY_PHASE_STRIP = NO;
-				EXCLUDED_ARCHS = "";
+				EXCLUDED_ARCHS = "i386 arm64e";
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -944,18 +944,18 @@
 					"JucePlugin_ManufacturerEmail=\\\"\\\"",
 					"JucePlugin_ManufacturerCode=0x4d616e75",
 					"JucePlugin_PluginCode=0x4775776b",
-					"JucePlugin_IsSynth=1",
+					"JucePlugin_IsSynth=0",
 					"JucePlugin_WantsMidiInput=1",
-					"JucePlugin_ProducesMidiOutput=1",
+					"JucePlugin_ProducesMidiOutput=0",
 					"JucePlugin_IsMidiEffect=0",
 					"JucePlugin_EditorRequiresKeyboardFocus=1",
-					"JucePlugin_Version=0.0.1",
-					"JucePlugin_VersionCode=0x1",
-					"JucePlugin_VersionString=\\\"0.0.1\\\"",
+					"JucePlugin_Version=0.0.2",
+					"JucePlugin_VersionCode=0x2",
+					"JucePlugin_VersionString=\\\"0.0.2\\\"",
 					"JucePlugin_VSTUniqueID=JucePlugin_PluginCode",
-					"JucePlugin_VSTCategory=kPlugCategSynth",
-					"JucePlugin_Vst3Category=\\\"Instrument|Synth\\\"",
-					"JucePlugin_AUMainType=\\'aumu\\'",
+					"JucePlugin_VSTCategory=kPlugCategEffect",
+					"JucePlugin_Vst3Category=\\\"Fx\\\"",
+					"JucePlugin_AUMainType=\\'aumf\\'",
 					"JucePlugin_AUSubType=JucePlugin_PluginCode",
 					"JucePlugin_AUExportPrefix=ABCAU",
 					"JucePlugin_AUExportPrefixQuoted=\\\"ABCAU\\\"",
@@ -964,10 +964,10 @@
 					"JucePlugin_AAXIdentifier=com.yourcompany.ABC",
 					"JucePlugin_AAXManufacturerCode=JucePlugin_ManufacturerCode",
 					"JucePlugin_AAXProductId=JucePlugin_PluginCode",
-					"JucePlugin_AAXCategory=2048",
+					"JucePlugin_AAXCategory=0",
 					"JucePlugin_AAXDisableBypass=0",
 					"JucePlugin_AAXDisableMultiMono=0",
-					"JucePlugin_IAAType=0x61757269",
+					"JucePlugin_IAAType=0x6175726d",
 					"JucePlugin_IAASubType=JucePlugin_PluginCode",
 					"JucePlugin_IAAName=\\\"Ca5:\\ ABC\\\"",
 					"JucePlugin_VSTNumMidiInputs=16",
@@ -975,12 +975,12 @@
 					"JucePlugin_ARAContentTypes=0",
 					"JucePlugin_ARATransformationFlags=0",
 					"JucePlugin_ARAFactoryID=\\\"com.yourcompany.ABC.factory\\\"",
-					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.ABC.aradocumentarchive.0.0.1\\\"",
+					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.ABC.aradocumentarchive.0.0.2\\\"",
 					"JucePlugin_ARACompatibleArchiveIDs=\\\"\\\"",
 					"JUCE_STANDALONE_APPLICATION=JucePlugin_Build_Standalone",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
-					"JUCE_APP_VERSION=0.0.1",
-					"JUCE_APP_VERSION_HEX=0x1",
+					"JUCE_APP_VERSION=0.0.2",
+					"JUCE_APP_VERSION_HEX=0x2",
 				);
 				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
 				GENERATE_PKGINFO_FILE = YES;
@@ -1001,7 +1001,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.ABC;
 				PRODUCT_NAME = "NewProject";
 				USE_HEADERMAP = NO;
-				VALID_ARCHS = "i386 x86_64 arm64 arm64e";
+				VALID_ARCHS = "arm64 x86_64";
 				WRAPPER_EXTENSION = vst3;
 			};
 			name = Debug;
@@ -1063,7 +1063,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CONFIGURATION_BUILD_DIR = "$(PROJECT_DIR)/build/$(CONFIGURATION)";
 				DEAD_CODE_STRIPPING = YES;
-				EXCLUDED_ARCHS = "";
+				EXCLUDED_ARCHS = "i386 arm64e";
 				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
 				GCC_OPTIMIZATION_LEVEL = 3;
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -1102,18 +1102,18 @@
 					"JucePlugin_ManufacturerEmail=\\\"\\\"",
 					"JucePlugin_ManufacturerCode=0x4d616e75",
 					"JucePlugin_PluginCode=0x4775776b",
-					"JucePlugin_IsSynth=1",
+					"JucePlugin_IsSynth=0",
 					"JucePlugin_WantsMidiInput=1",
-					"JucePlugin_ProducesMidiOutput=1",
+					"JucePlugin_ProducesMidiOutput=0",
 					"JucePlugin_IsMidiEffect=0",
 					"JucePlugin_EditorRequiresKeyboardFocus=1",
-					"JucePlugin_Version=0.0.1",
-					"JucePlugin_VersionCode=0x1",
-					"JucePlugin_VersionString=\\\"0.0.1\\\"",
+					"JucePlugin_Version=0.0.2",
+					"JucePlugin_VersionCode=0x2",
+					"JucePlugin_VersionString=\\\"0.0.2\\\"",
 					"JucePlugin_VSTUniqueID=JucePlugin_PluginCode",
-					"JucePlugin_VSTCategory=kPlugCategSynth",
-					"JucePlugin_Vst3Category=\\\"Instrument|Synth\\\"",
-					"JucePlugin_AUMainType=\\'aumu\\'",
+					"JucePlugin_VSTCategory=kPlugCategEffect",
+					"JucePlugin_Vst3Category=\\\"Fx\\\"",
+					"JucePlugin_AUMainType=\\'aumf\\'",
 					"JucePlugin_AUSubType=JucePlugin_PluginCode",
 					"JucePlugin_AUExportPrefix=ABCAU",
 					"JucePlugin_AUExportPrefixQuoted=\\\"ABCAU\\\"",
@@ -1122,10 +1122,10 @@
 					"JucePlugin_AAXIdentifier=com.yourcompany.ABC",
 					"JucePlugin_AAXManufacturerCode=JucePlugin_ManufacturerCode",
 					"JucePlugin_AAXProductId=JucePlugin_PluginCode",
-					"JucePlugin_AAXCategory=2048",
+					"JucePlugin_AAXCategory=0",
 					"JucePlugin_AAXDisableBypass=0",
 					"JucePlugin_AAXDisableMultiMono=0",
-					"JucePlugin_IAAType=0x61757269",
+					"JucePlugin_IAAType=0x6175726d",
 					"JucePlugin_IAASubType=JucePlugin_PluginCode",
 					"JucePlugin_IAAName=\\\"Ca5:\\ ABC\\\"",
 					"JucePlugin_VSTNumMidiInputs=16",
@@ -1133,12 +1133,12 @@
 					"JucePlugin_ARAContentTypes=0",
 					"JucePlugin_ARATransformationFlags=0",
 					"JucePlugin_ARAFactoryID=\\\"com.yourcompany.ABC.factory\\\"",
-					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.ABC.aradocumentarchive.0.0.1\\\"",
+					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.ABC.aradocumentarchive.0.0.2\\\"",
 					"JucePlugin_ARACompatibleArchiveIDs=\\\"\\\"",
 					"JUCE_STANDALONE_APPLICATION=JucePlugin_Build_Standalone",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
-					"JUCE_APP_VERSION=0.0.1",
-					"JUCE_APP_VERSION_HEX=0x1",
+					"JUCE_APP_VERSION=0.0.2",
+					"JUCE_APP_VERSION_HEX=0x2",
 				);
 				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
 				HEADER_SEARCH_PATHS = (
@@ -1156,7 +1156,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.ABC;
 				PRODUCT_NAME = "juce_vst3_helper";
 				USE_HEADERMAP = NO;
-				VALID_ARCHS = "i386 x86_64 arm64 arm64e";
+				VALID_ARCHS = "arm64 x86_64";
 			};
 			name = Release;
 		};
@@ -1169,7 +1169,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CONFIGURATION_BUILD_DIR = "$(PROJECT_DIR)/build/$(CONFIGURATION)";
 				COPY_PHASE_STRIP = NO;
-				EXCLUDED_ARCHS = "";
+				EXCLUDED_ARCHS = "i386 arm64e";
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -1208,18 +1208,18 @@
 					"JucePlugin_ManufacturerEmail=\\\"\\\"",
 					"JucePlugin_ManufacturerCode=0x4d616e75",
 					"JucePlugin_PluginCode=0x4775776b",
-					"JucePlugin_IsSynth=1",
+					"JucePlugin_IsSynth=0",
 					"JucePlugin_WantsMidiInput=1",
-					"JucePlugin_ProducesMidiOutput=1",
+					"JucePlugin_ProducesMidiOutput=0",
 					"JucePlugin_IsMidiEffect=0",
 					"JucePlugin_EditorRequiresKeyboardFocus=1",
-					"JucePlugin_Version=0.0.1",
-					"JucePlugin_VersionCode=0x1",
-					"JucePlugin_VersionString=\\\"0.0.1\\\"",
+					"JucePlugin_Version=0.0.2",
+					"JucePlugin_VersionCode=0x2",
+					"JucePlugin_VersionString=\\\"0.0.2\\\"",
 					"JucePlugin_VSTUniqueID=JucePlugin_PluginCode",
-					"JucePlugin_VSTCategory=kPlugCategSynth",
-					"JucePlugin_Vst3Category=\\\"Instrument|Synth\\\"",
-					"JucePlugin_AUMainType=\\'aumu\\'",
+					"JucePlugin_VSTCategory=kPlugCategEffect",
+					"JucePlugin_Vst3Category=\\\"Fx\\\"",
+					"JucePlugin_AUMainType=\\'aumf\\'",
 					"JucePlugin_AUSubType=JucePlugin_PluginCode",
 					"JucePlugin_AUExportPrefix=ABCAU",
 					"JucePlugin_AUExportPrefixQuoted=\\\"ABCAU\\\"",
@@ -1228,10 +1228,10 @@
 					"JucePlugin_AAXIdentifier=com.yourcompany.ABC",
 					"JucePlugin_AAXManufacturerCode=JucePlugin_ManufacturerCode",
 					"JucePlugin_AAXProductId=JucePlugin_PluginCode",
-					"JucePlugin_AAXCategory=2048",
+					"JucePlugin_AAXCategory=0",
 					"JucePlugin_AAXDisableBypass=0",
 					"JucePlugin_AAXDisableMultiMono=0",
-					"JucePlugin_IAAType=0x61757269",
+					"JucePlugin_IAAType=0x6175726d",
 					"JucePlugin_IAASubType=JucePlugin_PluginCode",
 					"JucePlugin_IAAName=\\\"Ca5:\\ ABC\\\"",
 					"JucePlugin_VSTNumMidiInputs=16",
@@ -1239,12 +1239,12 @@
 					"JucePlugin_ARAContentTypes=0",
 					"JucePlugin_ARATransformationFlags=0",
 					"JucePlugin_ARAFactoryID=\\\"com.yourcompany.ABC.factory\\\"",
-					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.ABC.aradocumentarchive.0.0.1\\\"",
+					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.ABC.aradocumentarchive.0.0.2\\\"",
 					"JucePlugin_ARACompatibleArchiveIDs=\\\"\\\"",
 					"JUCE_STANDALONE_APPLICATION=JucePlugin_Build_Standalone",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
-					"JUCE_APP_VERSION=0.0.1",
-					"JUCE_APP_VERSION_HEX=0x1",
+					"JUCE_APP_VERSION=0.0.2",
+					"JUCE_APP_VERSION_HEX=0x2",
 				);
 				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
 				HEADER_SEARCH_PATHS = (
@@ -1261,7 +1261,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.ABC;
 				PRODUCT_NAME = "juce_vst3_helper";
 				USE_HEADERMAP = NO;
-				VALID_ARCHS = "i386 x86_64 arm64 arm64e";
+				VALID_ARCHS = "arm64 x86_64";
 			};
 			name = Debug;
 		};
@@ -1274,7 +1274,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CONFIGURATION_BUILD_DIR = "$(PROJECT_DIR)/build/$(CONFIGURATION)";
 				DEAD_CODE_STRIPPING = YES;
-				EXCLUDED_ARCHS = "";
+				EXCLUDED_ARCHS = "i386 arm64e";
 				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
 				GCC_OPTIMIZATION_LEVEL = 3;
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -1313,18 +1313,18 @@
 					"JucePlugin_ManufacturerEmail=\\\"\\\"",
 					"JucePlugin_ManufacturerCode=0x4d616e75",
 					"JucePlugin_PluginCode=0x4775776b",
-					"JucePlugin_IsSynth=1",
+					"JucePlugin_IsSynth=0",
 					"JucePlugin_WantsMidiInput=1",
-					"JucePlugin_ProducesMidiOutput=1",
+					"JucePlugin_ProducesMidiOutput=0",
 					"JucePlugin_IsMidiEffect=0",
 					"JucePlugin_EditorRequiresKeyboardFocus=1",
-					"JucePlugin_Version=0.0.1",
-					"JucePlugin_VersionCode=0x1",
-					"JucePlugin_VersionString=\\\"0.0.1\\\"",
+					"JucePlugin_Version=0.0.2",
+					"JucePlugin_VersionCode=0x2",
+					"JucePlugin_VersionString=\\\"0.0.2\\\"",
 					"JucePlugin_VSTUniqueID=JucePlugin_PluginCode",
-					"JucePlugin_VSTCategory=kPlugCategSynth",
-					"JucePlugin_Vst3Category=\\\"Instrument|Synth\\\"",
-					"JucePlugin_AUMainType=\\'aumu\\'",
+					"JucePlugin_VSTCategory=kPlugCategEffect",
+					"JucePlugin_Vst3Category=\\\"Fx\\\"",
+					"JucePlugin_AUMainType=\\'aumf\\'",
 					"JucePlugin_AUSubType=JucePlugin_PluginCode",
 					"JucePlugin_AUExportPrefix=ABCAU",
 					"JucePlugin_AUExportPrefixQuoted=\\\"ABCAU\\\"",
@@ -1333,10 +1333,10 @@
 					"JucePlugin_AAXIdentifier=com.yourcompany.ABC",
 					"JucePlugin_AAXManufacturerCode=JucePlugin_ManufacturerCode",
 					"JucePlugin_AAXProductId=JucePlugin_PluginCode",
-					"JucePlugin_AAXCategory=2048",
+					"JucePlugin_AAXCategory=0",
 					"JucePlugin_AAXDisableBypass=0",
 					"JucePlugin_AAXDisableMultiMono=0",
-					"JucePlugin_IAAType=0x61757269",
+					"JucePlugin_IAAType=0x6175726d",
 					"JucePlugin_IAASubType=JucePlugin_PluginCode",
 					"JucePlugin_IAAName=\\\"Ca5:\\ ABC\\\"",
 					"JucePlugin_VSTNumMidiInputs=16",
@@ -1344,12 +1344,12 @@
 					"JucePlugin_ARAContentTypes=0",
 					"JucePlugin_ARATransformationFlags=0",
 					"JucePlugin_ARAFactoryID=\\\"com.yourcompany.ABC.factory\\\"",
-					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.ABC.aradocumentarchive.0.0.1\\\"",
+					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.ABC.aradocumentarchive.0.0.2\\\"",
 					"JucePlugin_ARACompatibleArchiveIDs=\\\"\\\"",
 					"JUCE_STANDALONE_APPLICATION=JucePlugin_Build_Standalone",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
-					"JUCE_APP_VERSION=0.0.1",
-					"JUCE_APP_VERSION_HEX=0x1",
+					"JUCE_APP_VERSION=0.0.2",
+					"JUCE_APP_VERSION_HEX=0x2",
 				);
 				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
 				GENERATE_PKGINFO_FILE = YES;
@@ -1371,7 +1371,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.ABC;
 				PRODUCT_NAME = "NewProject";
 				USE_HEADERMAP = NO;
-				VALID_ARCHS = "i386 x86_64 arm64 arm64e";
+				VALID_ARCHS = "arm64 x86_64";
 				WRAPPER_EXTENSION = vst3;
 			};
 			name = Release;
@@ -1393,7 +1393,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CONFIGURATION_BUILD_DIR = "$(PROJECT_DIR)/build/$(CONFIGURATION)";
 				COPY_PHASE_STRIP = NO;
-				EXCLUDED_ARCHS = "";
+				EXCLUDED_ARCHS = "i386 arm64e";
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -1432,18 +1432,18 @@
 					"JucePlugin_ManufacturerEmail=\\\"\\\"",
 					"JucePlugin_ManufacturerCode=0x4d616e75",
 					"JucePlugin_PluginCode=0x4775776b",
-					"JucePlugin_IsSynth=1",
+					"JucePlugin_IsSynth=0",
 					"JucePlugin_WantsMidiInput=1",
-					"JucePlugin_ProducesMidiOutput=1",
+					"JucePlugin_ProducesMidiOutput=0",
 					"JucePlugin_IsMidiEffect=0",
 					"JucePlugin_EditorRequiresKeyboardFocus=1",
-					"JucePlugin_Version=0.0.1",
-					"JucePlugin_VersionCode=0x1",
-					"JucePlugin_VersionString=\\\"0.0.1\\\"",
+					"JucePlugin_Version=0.0.2",
+					"JucePlugin_VersionCode=0x2",
+					"JucePlugin_VersionString=\\\"0.0.2\\\"",
 					"JucePlugin_VSTUniqueID=JucePlugin_PluginCode",
-					"JucePlugin_VSTCategory=kPlugCategSynth",
-					"JucePlugin_Vst3Category=\\\"Instrument|Synth\\\"",
-					"JucePlugin_AUMainType=\\'aumu\\'",
+					"JucePlugin_VSTCategory=kPlugCategEffect",
+					"JucePlugin_Vst3Category=\\\"Fx\\\"",
+					"JucePlugin_AUMainType=\\'aumf\\'",
 					"JucePlugin_AUSubType=JucePlugin_PluginCode",
 					"JucePlugin_AUExportPrefix=ABCAU",
 					"JucePlugin_AUExportPrefixQuoted=\\\"ABCAU\\\"",
@@ -1452,10 +1452,10 @@
 					"JucePlugin_AAXIdentifier=com.yourcompany.ABC",
 					"JucePlugin_AAXManufacturerCode=JucePlugin_ManufacturerCode",
 					"JucePlugin_AAXProductId=JucePlugin_PluginCode",
-					"JucePlugin_AAXCategory=2048",
+					"JucePlugin_AAXCategory=0",
 					"JucePlugin_AAXDisableBypass=0",
 					"JucePlugin_AAXDisableMultiMono=0",
-					"JucePlugin_IAAType=0x61757269",
+					"JucePlugin_IAAType=0x6175726d",
 					"JucePlugin_IAASubType=JucePlugin_PluginCode",
 					"JucePlugin_IAAName=\\\"Ca5:\\ ABC\\\"",
 					"JucePlugin_VSTNumMidiInputs=16",
@@ -1463,12 +1463,12 @@
 					"JucePlugin_ARAContentTypes=0",
 					"JucePlugin_ARATransformationFlags=0",
 					"JucePlugin_ARAFactoryID=\\\"com.yourcompany.ABC.factory\\\"",
-					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.ABC.aradocumentarchive.0.0.1\\\"",
+					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.ABC.aradocumentarchive.0.0.2\\\"",
 					"JucePlugin_ARACompatibleArchiveIDs=\\\"\\\"",
 					"JUCE_STANDALONE_APPLICATION=JucePlugin_Build_Standalone",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
-					"JUCE_APP_VERSION=0.0.1",
-					"JUCE_APP_VERSION_HEX=0x1",
+					"JUCE_APP_VERSION=0.0.2",
+					"JUCE_APP_VERSION_HEX=0x2",
 					"JUCE_SHARED_CODE=1",
 				);
 				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
@@ -1486,7 +1486,7 @@
 				PRODUCT_NAME = "NewProject";
 				SKIP_INSTALL = YES;
 				USE_HEADERMAP = NO;
-				VALID_ARCHS = "i386 x86_64 arm64 arm64e";
+				VALID_ARCHS = "arm64 x86_64";
 			};
 			name = Debug;
 		};
@@ -1507,7 +1507,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CONFIGURATION_BUILD_DIR = "$(PROJECT_DIR)/build/$(CONFIGURATION)";
 				DEAD_CODE_STRIPPING = YES;
-				EXCLUDED_ARCHS = "";
+				EXCLUDED_ARCHS = "i386 arm64e";
 				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
 				GCC_OPTIMIZATION_LEVEL = 3;
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -1546,18 +1546,18 @@
 					"JucePlugin_ManufacturerEmail=\\\"\\\"",
 					"JucePlugin_ManufacturerCode=0x4d616e75",
 					"JucePlugin_PluginCode=0x4775776b",
-					"JucePlugin_IsSynth=1",
+					"JucePlugin_IsSynth=0",
 					"JucePlugin_WantsMidiInput=1",
-					"JucePlugin_ProducesMidiOutput=1",
+					"JucePlugin_ProducesMidiOutput=0",
 					"JucePlugin_IsMidiEffect=0",
 					"JucePlugin_EditorRequiresKeyboardFocus=1",
-					"JucePlugin_Version=0.0.1",
-					"JucePlugin_VersionCode=0x1",
-					"JucePlugin_VersionString=\\\"0.0.1\\\"",
+					"JucePlugin_Version=0.0.2",
+					"JucePlugin_VersionCode=0x2",
+					"JucePlugin_VersionString=\\\"0.0.2\\\"",
 					"JucePlugin_VSTUniqueID=JucePlugin_PluginCode",
-					"JucePlugin_VSTCategory=kPlugCategSynth",
-					"JucePlugin_Vst3Category=\\\"Instrument|Synth\\\"",
-					"JucePlugin_AUMainType=\\'aumu\\'",
+					"JucePlugin_VSTCategory=kPlugCategEffect",
+					"JucePlugin_Vst3Category=\\\"Fx\\\"",
+					"JucePlugin_AUMainType=\\'aumf\\'",
 					"JucePlugin_AUSubType=JucePlugin_PluginCode",
 					"JucePlugin_AUExportPrefix=ABCAU",
 					"JucePlugin_AUExportPrefixQuoted=\\\"ABCAU\\\"",
@@ -1566,10 +1566,10 @@
 					"JucePlugin_AAXIdentifier=com.yourcompany.ABC",
 					"JucePlugin_AAXManufacturerCode=JucePlugin_ManufacturerCode",
 					"JucePlugin_AAXProductId=JucePlugin_PluginCode",
-					"JucePlugin_AAXCategory=2048",
+					"JucePlugin_AAXCategory=0",
 					"JucePlugin_AAXDisableBypass=0",
 					"JucePlugin_AAXDisableMultiMono=0",
-					"JucePlugin_IAAType=0x61757269",
+					"JucePlugin_IAAType=0x6175726d",
 					"JucePlugin_IAASubType=JucePlugin_PluginCode",
 					"JucePlugin_IAAName=\\\"Ca5:\\ ABC\\\"",
 					"JucePlugin_VSTNumMidiInputs=16",
@@ -1577,12 +1577,12 @@
 					"JucePlugin_ARAContentTypes=0",
 					"JucePlugin_ARATransformationFlags=0",
 					"JucePlugin_ARAFactoryID=\\\"com.yourcompany.ABC.factory\\\"",
-					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.ABC.aradocumentarchive.0.0.1\\\"",
+					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.ABC.aradocumentarchive.0.0.2\\\"",
 					"JucePlugin_ARACompatibleArchiveIDs=\\\"\\\"",
 					"JUCE_STANDALONE_APPLICATION=JucePlugin_Build_Standalone",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
-					"JUCE_APP_VERSION=0.0.1",
-					"JUCE_APP_VERSION_HEX=0x1",
+					"JUCE_APP_VERSION=0.0.2",
+					"JUCE_APP_VERSION_HEX=0x2",
 					"JUCE_SHARED_CODE=1",
 				);
 				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
@@ -1601,7 +1601,7 @@
 				PRODUCT_NAME = "NewProject";
 				SKIP_INSTALL = YES;
 				USE_HEADERMAP = NO;
-				VALID_ARCHS = "i386 x86_64 arm64 arm64e";
+				VALID_ARCHS = "arm64 x86_64";
 			};
 			name = Release;
 		};
@@ -1616,7 +1616,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CONFIGURATION_BUILD_DIR = "$(PROJECT_DIR)/build/$(CONFIGURATION)";
 				DEAD_CODE_STRIPPING = YES;
-				EXCLUDED_ARCHS = "";
+				EXCLUDED_ARCHS = "i386 arm64e";
 				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
 				GCC_OPTIMIZATION_LEVEL = 3;
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -1655,18 +1655,18 @@
 					"JucePlugin_ManufacturerEmail=\\\"\\\"",
 					"JucePlugin_ManufacturerCode=0x4d616e75",
 					"JucePlugin_PluginCode=0x4775776b",
-					"JucePlugin_IsSynth=1",
+					"JucePlugin_IsSynth=0",
 					"JucePlugin_WantsMidiInput=1",
-					"JucePlugin_ProducesMidiOutput=1",
+					"JucePlugin_ProducesMidiOutput=0",
 					"JucePlugin_IsMidiEffect=0",
 					"JucePlugin_EditorRequiresKeyboardFocus=1",
-					"JucePlugin_Version=0.0.1",
-					"JucePlugin_VersionCode=0x1",
-					"JucePlugin_VersionString=\\\"0.0.1\\\"",
+					"JucePlugin_Version=0.0.2",
+					"JucePlugin_VersionCode=0x2",
+					"JucePlugin_VersionString=\\\"0.0.2\\\"",
 					"JucePlugin_VSTUniqueID=JucePlugin_PluginCode",
-					"JucePlugin_VSTCategory=kPlugCategSynth",
-					"JucePlugin_Vst3Category=\\\"Instrument|Synth\\\"",
-					"JucePlugin_AUMainType=\\'aumu\\'",
+					"JucePlugin_VSTCategory=kPlugCategEffect",
+					"JucePlugin_Vst3Category=\\\"Fx\\\"",
+					"JucePlugin_AUMainType=\\'aumf\\'",
 					"JucePlugin_AUSubType=JucePlugin_PluginCode",
 					"JucePlugin_AUExportPrefix=ABCAU",
 					"JucePlugin_AUExportPrefixQuoted=\\\"ABCAU\\\"",
@@ -1675,10 +1675,10 @@
 					"JucePlugin_AAXIdentifier=com.yourcompany.ABC",
 					"JucePlugin_AAXManufacturerCode=JucePlugin_ManufacturerCode",
 					"JucePlugin_AAXProductId=JucePlugin_PluginCode",
-					"JucePlugin_AAXCategory=2048",
+					"JucePlugin_AAXCategory=0",
 					"JucePlugin_AAXDisableBypass=0",
 					"JucePlugin_AAXDisableMultiMono=0",
-					"JucePlugin_IAAType=0x61757269",
+					"JucePlugin_IAAType=0x6175726d",
 					"JucePlugin_IAASubType=JucePlugin_PluginCode",
 					"JucePlugin_IAAName=\\\"Ca5:\\ ABC\\\"",
 					"JucePlugin_VSTNumMidiInputs=16",
@@ -1686,12 +1686,12 @@
 					"JucePlugin_ARAContentTypes=0",
 					"JucePlugin_ARATransformationFlags=0",
 					"JucePlugin_ARAFactoryID=\\\"com.yourcompany.ABC.factory\\\"",
-					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.ABC.aradocumentarchive.0.0.1\\\"",
+					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.ABC.aradocumentarchive.0.0.2\\\"",
 					"JucePlugin_ARACompatibleArchiveIDs=\\\"\\\"",
 					"JUCE_STANDALONE_APPLICATION=JucePlugin_Build_Standalone",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
-					"JUCE_APP_VERSION=0.0.1",
-					"JUCE_APP_VERSION_HEX=0x1",
+					"JUCE_APP_VERSION=0.0.2",
+					"JUCE_APP_VERSION_HEX=0x2",
 				);
 				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
 				HEADER_SEARCH_PATHS = (
@@ -1710,7 +1710,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.ABC.ABCAUv3;
 				PRODUCT_NAME = "NewProject";
 				USE_HEADERMAP = NO;
-				VALID_ARCHS = "i386 x86_64 arm64 arm64e";
+				VALID_ARCHS = "arm64 x86_64";
 			};
 			name = Release;
 		};
@@ -1774,7 +1774,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CONFIGURATION_BUILD_DIR = "$(PROJECT_DIR)/build/$(CONFIGURATION)";
 				COPY_PHASE_STRIP = NO;
-				EXCLUDED_ARCHS = "";
+				EXCLUDED_ARCHS = "i386 arm64e";
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -1813,18 +1813,18 @@
 					"JucePlugin_ManufacturerEmail=\\\"\\\"",
 					"JucePlugin_ManufacturerCode=0x4d616e75",
 					"JucePlugin_PluginCode=0x4775776b",
-					"JucePlugin_IsSynth=1",
+					"JucePlugin_IsSynth=0",
 					"JucePlugin_WantsMidiInput=1",
-					"JucePlugin_ProducesMidiOutput=1",
+					"JucePlugin_ProducesMidiOutput=0",
 					"JucePlugin_IsMidiEffect=0",
 					"JucePlugin_EditorRequiresKeyboardFocus=1",
-					"JucePlugin_Version=0.0.1",
-					"JucePlugin_VersionCode=0x1",
-					"JucePlugin_VersionString=\\\"0.0.1\\\"",
+					"JucePlugin_Version=0.0.2",
+					"JucePlugin_VersionCode=0x2",
+					"JucePlugin_VersionString=\\\"0.0.2\\\"",
 					"JucePlugin_VSTUniqueID=JucePlugin_PluginCode",
-					"JucePlugin_VSTCategory=kPlugCategSynth",
-					"JucePlugin_Vst3Category=\\\"Instrument|Synth\\\"",
-					"JucePlugin_AUMainType=\\'aumu\\'",
+					"JucePlugin_VSTCategory=kPlugCategEffect",
+					"JucePlugin_Vst3Category=\\\"Fx\\\"",
+					"JucePlugin_AUMainType=\\'aumf\\'",
 					"JucePlugin_AUSubType=JucePlugin_PluginCode",
 					"JucePlugin_AUExportPrefix=ABCAU",
 					"JucePlugin_AUExportPrefixQuoted=\\\"ABCAU\\\"",
@@ -1833,10 +1833,10 @@
 					"JucePlugin_AAXIdentifier=com.yourcompany.ABC",
 					"JucePlugin_AAXManufacturerCode=JucePlugin_ManufacturerCode",
 					"JucePlugin_AAXProductId=JucePlugin_PluginCode",
-					"JucePlugin_AAXCategory=2048",
+					"JucePlugin_AAXCategory=0",
 					"JucePlugin_AAXDisableBypass=0",
 					"JucePlugin_AAXDisableMultiMono=0",
-					"JucePlugin_IAAType=0x61757269",
+					"JucePlugin_IAAType=0x6175726d",
 					"JucePlugin_IAASubType=JucePlugin_PluginCode",
 					"JucePlugin_IAAName=\\\"Ca5:\\ ABC\\\"",
 					"JucePlugin_VSTNumMidiInputs=16",
@@ -1844,12 +1844,12 @@
 					"JucePlugin_ARAContentTypes=0",
 					"JucePlugin_ARATransformationFlags=0",
 					"JucePlugin_ARAFactoryID=\\\"com.yourcompany.ABC.factory\\\"",
-					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.ABC.aradocumentarchive.0.0.1\\\"",
+					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.ABC.aradocumentarchive.0.0.2\\\"",
 					"JucePlugin_ARACompatibleArchiveIDs=\\\"\\\"",
 					"JUCE_STANDALONE_APPLICATION=JucePlugin_Build_Standalone",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
-					"JUCE_APP_VERSION=0.0.1",
-					"JUCE_APP_VERSION_HEX=0x1",
+					"JUCE_APP_VERSION=0.0.2",
+					"JUCE_APP_VERSION_HEX=0x2",
 				);
 				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
 				HEADER_SEARCH_PATHS = (
@@ -1867,7 +1867,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.ABC.ABCAUv3;
 				PRODUCT_NAME = "NewProject";
 				USE_HEADERMAP = NO;
-				VALID_ARCHS = "i386 x86_64 arm64 arm64e";
+				VALID_ARCHS = "arm64 x86_64";
 			};
 			name = Debug;
 		};
@@ -1880,7 +1880,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CONFIGURATION_BUILD_DIR = "$(PROJECT_DIR)/build/$(CONFIGURATION)";
 				COPY_PHASE_STRIP = NO;
-				EXCLUDED_ARCHS = "";
+				EXCLUDED_ARCHS = "i386 arm64e";
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -1919,18 +1919,18 @@
 					"JucePlugin_ManufacturerEmail=\\\"\\\"",
 					"JucePlugin_ManufacturerCode=0x4d616e75",
 					"JucePlugin_PluginCode=0x4775776b",
-					"JucePlugin_IsSynth=1",
+					"JucePlugin_IsSynth=0",
 					"JucePlugin_WantsMidiInput=1",
-					"JucePlugin_ProducesMidiOutput=1",
+					"JucePlugin_ProducesMidiOutput=0",
 					"JucePlugin_IsMidiEffect=0",
 					"JucePlugin_EditorRequiresKeyboardFocus=1",
-					"JucePlugin_Version=0.0.1",
-					"JucePlugin_VersionCode=0x1",
-					"JucePlugin_VersionString=\\\"0.0.1\\\"",
+					"JucePlugin_Version=0.0.2",
+					"JucePlugin_VersionCode=0x2",
+					"JucePlugin_VersionString=\\\"0.0.2\\\"",
 					"JucePlugin_VSTUniqueID=JucePlugin_PluginCode",
-					"JucePlugin_VSTCategory=kPlugCategSynth",
-					"JucePlugin_Vst3Category=\\\"Instrument|Synth\\\"",
-					"JucePlugin_AUMainType=\\'aumu\\'",
+					"JucePlugin_VSTCategory=kPlugCategEffect",
+					"JucePlugin_Vst3Category=\\\"Fx\\\"",
+					"JucePlugin_AUMainType=\\'aumf\\'",
 					"JucePlugin_AUSubType=JucePlugin_PluginCode",
 					"JucePlugin_AUExportPrefix=ABCAU",
 					"JucePlugin_AUExportPrefixQuoted=\\\"ABCAU\\\"",
@@ -1939,10 +1939,10 @@
 					"JucePlugin_AAXIdentifier=com.yourcompany.ABC",
 					"JucePlugin_AAXManufacturerCode=JucePlugin_ManufacturerCode",
 					"JucePlugin_AAXProductId=JucePlugin_PluginCode",
-					"JucePlugin_AAXCategory=2048",
+					"JucePlugin_AAXCategory=0",
 					"JucePlugin_AAXDisableBypass=0",
 					"JucePlugin_AAXDisableMultiMono=0",
-					"JucePlugin_IAAType=0x61757269",
+					"JucePlugin_IAAType=0x6175726d",
 					"JucePlugin_IAASubType=JucePlugin_PluginCode",
 					"JucePlugin_IAAName=\\\"Ca5:\\ ABC\\\"",
 					"JucePlugin_VSTNumMidiInputs=16",
@@ -1950,12 +1950,12 @@
 					"JucePlugin_ARAContentTypes=0",
 					"JucePlugin_ARATransformationFlags=0",
 					"JucePlugin_ARAFactoryID=\\\"com.yourcompany.ABC.factory\\\"",
-					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.ABC.aradocumentarchive.0.0.1\\\"",
+					"JucePlugin_ARADocumentArchiveID=\\\"com.yourcompany.ABC.aradocumentarchive.0.0.2\\\"",
 					"JucePlugin_ARACompatibleArchiveIDs=\\\"\\\"",
 					"JUCE_STANDALONE_APPLICATION=JucePlugin_Build_Standalone",
 					"JUCER_XCODE_MAC_F6D2F4CF=1",
-					"JUCE_APP_VERSION=0.0.1",
-					"JUCE_APP_VERSION_HEX=0x1",
+					"JUCE_APP_VERSION=0.0.2",
+					"JUCE_APP_VERSION_HEX=0x2",
 				);
 				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
 				GENERATE_PKGINFO_FILE = YES;
@@ -1977,7 +1977,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.ABC;
 				PRODUCT_NAME = "NewProject";
 				USE_HEADERMAP = NO;
-				VALID_ARCHS = "i386 x86_64 arm64 arm64e";
+				VALID_ARCHS = "arm64 x86_64";
 				WRAPPER_EXTENSION = component;
 			};
 			name = Debug;

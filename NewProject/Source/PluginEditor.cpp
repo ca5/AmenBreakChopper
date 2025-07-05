@@ -13,8 +13,22 @@
 NewProjectAudioProcessorEditor::NewProjectAudioProcessorEditor (NewProjectAudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
-    // Make sure that before the constructor has finished, you've set the
-    // editor's size to whatever you need it to be.
+    mDelayTimeSlider.setSliderStyle(juce::Slider::SliderStyle::LinearHorizontal);
+    mDelayTimeSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, true, 100, 25);
+    addAndMakeVisible(mDelayTimeSlider);
+
+    mFeedbackSlider.setSliderStyle(juce::Slider::SliderStyle::LinearHorizontal);
+    mFeedbackSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, true, 100, 25);
+    addAndMakeVisible(mFeedbackSlider);
+
+    mMixSlider.setSliderStyle(juce::Slider::SliderStyle::LinearHorizontal);
+    mMixSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, true, 100, 25);
+    addAndMakeVisible(mMixSlider);
+
+    mDelayTimeAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "delayTime", mDelayTimeSlider));
+    mFeedbackAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "feedback", mFeedbackSlider));
+    mMixAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "mix", mMixSlider));
+
     setSize (400, 300);
 }
 
@@ -25,16 +39,12 @@ NewProjectAudioProcessorEditor::~NewProjectAudioProcessorEditor()
 //==============================================================================
 void NewProjectAudioProcessorEditor::paint (juce::Graphics& g)
 {
-    // (Our component is opaque, so we must completely fill the background with a solid colour)
     g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
-
-    g.setColour (juce::Colours::white);
-    g.setFont (juce::FontOptions (15.0f));
-    g.drawFittedText ("Hello World!", getLocalBounds(), juce::Justification::centred, 1);
 }
 
 void NewProjectAudioProcessorEditor::resized()
 {
-    // This is generally where you'll want to lay out the positions of any
-    // subcomponents in your editor..
+    mDelayTimeSlider.setBounds(10, 10, getWidth() - 20, 50);
+    mFeedbackSlider.setBounds(10, 70, getWidth() - 20, 50);
+    mMixSlider.setBounds(10, 130, getWidth() - 20, 50);
 }

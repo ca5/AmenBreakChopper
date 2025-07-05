@@ -19,7 +19,8 @@ NewProjectAudioProcessor::NewProjectAudioProcessor()
                       #endif
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
-                       )
+                       ),
+       mValueTreeState(*this, nullptr, "PARAMETERS", createParameterLayout())
 #endif
 {
 }
@@ -29,6 +30,22 @@ NewProjectAudioProcessor::~NewProjectAudioProcessor()
 }
 
 //==============================================================================
+juce::AudioProcessorValueTreeState::ParameterLayout NewProjectAudioProcessor::createParameterLayout()
+{
+    juce::AudioProcessorValueTreeState::ParameterLayout layout;
+
+    layout.add(std::make_unique<juce::AudioParameterInt>("delayTime", "Delay Time", 0, 15, 0));
+    layout.add(std::make_unique<juce::AudioParameterFloat>("feedback", "Feedback", 0.0f, 0.95f, 0.5f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>("mix", "Mix", 0.0f, 1.0f, 0.5f));
+
+    return layout;
+}
+
+juce::AudioProcessorValueTreeState& NewProjectAudioProcessor::getValueTreeState()
+{
+    return mValueTreeState;
+}
+
 const juce::String NewProjectAudioProcessor::getName() const
 {
     return JucePlugin_Name;
@@ -93,14 +110,17 @@ void NewProjectAudioProcessor::changeProgramName (int index, const juce::String&
 //==============================================================================
 void NewProjectAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    // Use this method as the place to do any pre-playback
-    // initialisation that you need..
+    mSampleRate = sampleRate;
+
+    const int numChannels = getTotalNumInputChannels();
+    const int delayBufferSize = 2.0 * sampleRate; // 2 seconds max delay
+    mDelayBuffer.setSize(numChannels, delayBufferSize);
+    mDelayBuffer.clear();
 }
 
 void NewProjectAudioProcessor::releaseResources()
 {
-    // When playback stops, you can use this as an opportunity to free up any
-    // spare memory, etc.
+    mDelayBuffer.setSize(0, 0);
 }
 
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -135,27 +155,49 @@ void NewProjectAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
-    // In case we have more outputs than inputs, this code clears any output
-    // channels that didn't contain input data, (because these aren't
-    // guaranteed to be empty - they may contain garbage).
-    // This is here to avoid people getting screaming feedback
-    // when they first compile a plugin, but obviously you don't need to keep
-    // this code if your algorithm always overwrites all the output channels.
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
-    // This is the place where you'd normally do the guts of your plugin's
-    // audio processing...
-    // Make sure to reset the state if your inner loop is processing
-    // the samples and the outer loop is handling the channels.
-    // Alternatively, you can process the samples with the channels
-    // interleaved by keeping the same state.
+    const int bufferLength = buffer.getNumSamples();
+    const int delayBufferLength = mDelayBuffer.getNumSamples();
+
+    double bpm = 120.0;
+    if (auto* playHead = getPlayHead())
+    {
+        if (auto positionInfo = playHead->getPosition())
+        {
+            if (positionInfo->getBpm().hasValue())
+                bpm = *positionInfo->getBpm();
+        }
+    }
+
+    auto* delayTimeParam = mValueTreeState.getRawParameterValue("delayTime");
+    auto* feedbackParam = mValueTreeState.getRawParameterValue("feedback");
+    auto* mixParam = mValueTreeState.getRawParameterValue("mix");
+
+    double eighthNoteTime = (60.0 / bpm) / 2.0;
+    int delayTimeInSamples = static_cast<int>(eighthNoteTime * delayTimeParam->load() * mSampleRate);
+
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
+        const float* bufferData = buffer.getReadPointer(channel);
+        float* delayBufferData = mDelayBuffer.getWritePointer(channel);
         auto* channelData = buffer.getWritePointer (channel);
 
-        // ..do something to the data...
+        for (int i = 0; i < bufferLength; ++i)
+        {
+            const int readPosition = (mWritePosition - delayTimeInSamples + i + delayBufferLength) % delayBufferLength;
+            const float delayedSample = delayBufferData[readPosition];
+
+            const float inputSample = bufferData[i];
+            float* writePointer = &delayBufferData[(mWritePosition + i) % delayBufferLength];
+            *writePointer = inputSample + delayedSample * feedbackParam->load();
+
+            channelData[i] = inputSample * (1.0f - mixParam->load()) + delayedSample * mixParam->load();
+        }
     }
+
+    mWritePosition = (mWritePosition + bufferLength) % delayBufferLength;
 }
 
 //==============================================================================
@@ -172,15 +214,18 @@ juce::AudioProcessorEditor* NewProjectAudioProcessor::createEditor()
 //==============================================================================
 void NewProjectAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    // You should use this method to store your parameters in the memory block.
-    // You could do that either as raw data, or use the XML or ValueTree classes
-    // as intermediaries to make it easy to save and load complex data.
+    auto state = mValueTreeState.copyState();
+    std::unique_ptr<juce::XmlElement> xml(state.createXml());
+    copyXmlToBinary(*xml, destData);
 }
 
 void NewProjectAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    // You should use this method to restore your parameters from this memory block,
-    // whose contents will have been created by the getStateInformation() call.
+    std::unique_ptr<juce::XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
+
+    if (xmlState.get() != nullptr)
+        if (xmlState->hasTagName(mValueTreeState.state.getType()))
+            mValueTreeState.replaceState(juce::ValueTree::fromXml(*xmlState));
 }
 
 //==============================================================================
