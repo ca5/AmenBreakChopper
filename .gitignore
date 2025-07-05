@@ -1,8 +1,8 @@
 # macOS system files
 .DS_Store
 
-# JUCE build products
-Builds/
+# JUCE build products (ignore actual build output, but keep project files)
+Builds/*/build/
 *.jucer.user
 *.jucer.bak
 
