@@ -2,17 +2,24 @@
 .DS_Store
 
 # JUCE build products (ignore actual build output, but keep project files)
-Builds/*/build/
+Builds/
+JuceLibraryCode/
+JuceLibraryCode/AppConfig.h
 *.jucer.user
 *.jucer.bak
 
 # IDE specific files
 .idea/
 .vscode/
+
+# Xcode specific files
 *.xcodeproj/xcuserdata/
 *.xcworkspace/xcuserdata/
-*.xcworkspace/xcshareddata/
 *.xcuserdatad/
+*.xcuserstate
+DerivedData/
+*.xccheckout
+*.xcscmblueprint
 
 # Compiled binaries and libraries
 *.o
@@ -38,3 +45,10 @@ Builds/*/build/
 *.tmp
 *.log
 *.swp
+
+# MacOS specific files
+.DS_Store
+._*
+.AppleDouble
+.LSOverride
+Icon
