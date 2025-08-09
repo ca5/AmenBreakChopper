@@ -35,8 +35,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout AmenBreakChopperAudioProcess
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
 
     layout.add(std::make_unique<juce::AudioParameterInt>("delayTime", "Delay Time", 0, 15, 0));
-    layout.add(std::make_unique<juce::AudioParameterFloat>("feedback", "Feedback", 0.0f, 0.95f, 0.5f));
-    layout.add(std::make_unique<juce::AudioParameterFloat>("mix", "Mix", 0.0f, 1.0f, 0.5f));
 
     return layout;
 }
@@ -113,7 +111,13 @@ void AmenBreakChopperAudioProcessor::prepareToPlay (double sampleRate, int sampl
     mSampleRate = sampleRate;
 
     const int numChannels = getTotalNumInputChannels();
-    const int delayBufferSize = 2.0 * sampleRate; // 2 seconds max delay
+    // Calculate buffer size for 16 eighth notes at a very slow BPM (e.g., 30 BPM)
+    // to ensure the buffer is always large enough.
+    // Max delay = 16 * (1/8 note) = 2 whole notes = 8 beats.
+    // Duration of 8 beats at 30 BPM = 8 * (60 / 30) = 8 * 2 = 16 seconds.
+    const double maxDelayTimeInSeconds = 16.0;
+    const int delayBufferSize = static_cast<int>(maxDelayTimeInSeconds * sampleRate);
+
     mDelayBuffer.setSize(numChannels, delayBufferSize);
     mDelayBuffer.clear();
 }
@@ -172,11 +176,10 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     }
 
     auto* delayTimeParam = mValueTreeState.getRawParameterValue("delayTime");
-    auto* feedbackParam = mValueTreeState.getRawParameterValue("feedback");
-    auto* mixParam = mValueTreeState.getRawParameterValue("mix");
+    const int currentDelayTime = static_cast<int>(delayTimeParam->load());
 
     double eighthNoteTime = (60.0 / bpm) / 2.0;
-    int delayTimeInSamples = static_cast<int>(eighthNoteTime * delayTimeParam->load() * mSampleRate);
+    int delayTimeInSamples = static_cast<int>(eighthNoteTime * currentDelayTime * mSampleRate);
 
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
@@ -191,9 +194,9 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
 
             const float inputSample = bufferData[i];
             float* writePointer = &delayBufferData[(mWritePosition + i) % delayBufferLength];
-            *writePointer = inputSample + delayedSample * feedbackParam->load();
+            *writePointer = inputSample; // No feedback
 
-            channelData[i] = inputSample * (1.0f - mixParam->load()) + delayedSample * mixParam->load();
+            channelData[i] = delayedSample; // 100% Wet
         }
     }
 
