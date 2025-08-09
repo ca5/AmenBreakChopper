@@ -165,6 +165,28 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     const int bufferLength = buffer.getNumSamples();
     const int delayBufferLength = mDelayBuffer.getNumSamples();
 
+    // Write input to the delay buffer continuously
+    for (int channel = 0; channel < totalNumInputChannels; ++channel)
+    {
+        const float* bufferData = buffer.getReadPointer(channel);
+        float* delayBufferData = mDelayBuffer.getWritePointer(channel);
+        for (int i = 0; i < bufferLength; ++i)
+        {
+            delayBufferData[(mWritePosition + i) % delayBufferLength] = bufferData[i];
+        }
+    }
+
+    auto* delayTimeParam = mValueTreeState.getRawParameterValue("delayTime");
+    const int currentDelayTime = static_cast<int>(delayTimeParam->load());
+
+    // If DelayTime is 0, bypass the effect. The output buffer already contains the input audio.
+    if (currentDelayTime == 0)
+    {
+        mWritePosition = (mWritePosition + bufferLength) % delayBufferLength;
+        return;
+    }
+
+    // --- Normal Delay Processing (if currentDelayTime != 0) ---
     double bpm = 120.0;
     if (auto* playHead = getPlayHead())
     {
@@ -175,27 +197,18 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
         }
     }
 
-    auto* delayTimeParam = mValueTreeState.getRawParameterValue("delayTime");
-    const int currentDelayTime = static_cast<int>(delayTimeParam->load());
-
     double eighthNoteTime = (60.0 / bpm) / 2.0;
     int delayTimeInSamples = static_cast<int>(eighthNoteTime * currentDelayTime * mSampleRate);
 
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
-        const float* bufferData = buffer.getReadPointer(channel);
         float* delayBufferData = mDelayBuffer.getWritePointer(channel);
-        auto* channelData = buffer.getWritePointer (channel);
+        auto* channelData = buffer.getWritePointer(channel);
 
         for (int i = 0; i < bufferLength; ++i)
         {
             const int readPosition = (mWritePosition - delayTimeInSamples + i + delayBufferLength) % delayBufferLength;
             const float delayedSample = delayBufferData[readPosition];
-
-            const float inputSample = bufferData[i];
-            float* writePointer = &delayBufferData[(mWritePosition + i) % delayBufferLength];
-            *writePointer = inputSample; // No feedback
-
             channelData[i] = delayedSample; // 100% Wet
         }
     }
