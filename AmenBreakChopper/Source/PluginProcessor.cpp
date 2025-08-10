@@ -155,6 +155,29 @@ bool AmenBreakChopperAudioProcessor::isBusesLayoutSupported (const BusesLayout& 
 
 void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
+    // --- MIDI Message Processing ---
+    juce::MidiMessage message;
+    int time;
+    for (juce::MidiBuffer::Iterator i (midiMessages); i.getNextEvent (message, time);)
+    {
+        if (message.isNoteOn())
+        {
+            int noteNumber = message.getNoteNumber();
+            if (noteNumber >= 64 && noteNumber <= 79)
+            {
+                int newDelayTime = noteNumber - 64;
+                auto* delayTimeParam = mValueTreeState.getParameter("delayTime");
+                if (delayTimeParam != nullptr)
+                {
+                    // setValueNotifyingHost expects a normalized value (0.0 to 1.0)
+                    delayTimeParam->setValueNotifyingHost(static_cast<float>(newDelayTime) / 15.0f);
+                }
+            }
+        }
+    }
+    midiMessages.clear();
+
+    // --- Audio Processing ---
     juce::ScopedNoDenormals noDenormals;
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
