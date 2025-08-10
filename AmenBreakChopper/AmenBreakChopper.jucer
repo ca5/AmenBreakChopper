@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <JUCERPROJECT id="GUwkNr" name="AmenBreakChopper" projectType="audioplug" useAppConfig="0"
-              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" version="0.0.2"
+              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" version="0.1.0"
               pluginFormats="buildAU,buildAUv3,buildStandalone,buildVST3" pluginCharacteristicsValue="pluginWantsAudioInput,pluginWantsMidiIn,pluginEditorRequiresKeys"
               pluginManufacturer="Ca5">
   <MAINGROUP id="S0hQmt" name="AmenBreakChopper">
