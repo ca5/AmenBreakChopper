@@ -28,8 +28,12 @@ private:
     AmenBreakChopperAudioProcessor& audioProcessor;
 
     juce::Slider mDelayTimeSlider;
+    juce::Slider mSequencePositionSlider;
+    juce::Slider mNoteSequencePositionSlider;
 
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mDelayTimeAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mSequencePositionAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mNoteSequencePositionAttachment;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AmenBreakChopperAudioProcessorEditor)
 };

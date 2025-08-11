@@ -64,5 +64,14 @@ private:
     int mWritePosition { 0 };
     double mSampleRate { 0.0 };
 
+    // --- Sequencer State ---
+    double mSamplesUntilNextEighthNote { 0.0 };
+    int mSequencePosition { 0 };
+    int mNoteSequencePosition { 0 };
+    int mLastReceivedNoteValue { 0 };
+    bool mSequenceResetQueued { false };
+    bool mTimerResetQueued { false };
+    bool mNewNoteReceived { false };
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AmenBreakChopperAudioProcessor)
 };
