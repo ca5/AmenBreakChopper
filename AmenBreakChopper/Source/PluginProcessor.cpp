@@ -124,6 +124,7 @@ void AmenBreakChopperAudioProcessor::prepareToPlay (double sampleRate, int sampl
     mSequenceResetQueued = false;
     mTimerResetQueued = false;
     mNewNoteReceived = false;
+    mSoftResetQueued = false;
 }
 
 void AmenBreakChopperAudioProcessor::releaseResources()
@@ -220,6 +221,8 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
                 mSequenceResetQueued = true;
             if (message.getControllerNumber() == 106) // Timer Reset CC
                 mTimerResetQueued = true;
+            if (message.getControllerNumber() == 97) // Soft Reset CC
+                mSoftResetQueued = true;
         }
     }
     midiMessages.clear();
@@ -249,6 +252,13 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
                     delayTimeParam->setValueNotifyingHost(0.0f); // Reset DelayTime to 0
 
                 mSequenceResetQueued = false;
+            }
+
+            if (mSoftResetQueued)
+            {
+                mSequencePosition = 0;
+                mNoteSequencePosition = 0;
+                mSoftResetQueued = false;
             }
 
             if (mNewNoteReceived)

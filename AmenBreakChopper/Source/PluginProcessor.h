@@ -72,6 +72,7 @@ private:
     bool mSequenceResetQueued { false };
     bool mTimerResetQueued { false };
     bool mNewNoteReceived { false };
+    bool mSoftResetQueued { false };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AmenBreakChopperAudioProcessor)
 };
