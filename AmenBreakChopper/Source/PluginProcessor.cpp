@@ -243,6 +243,11 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
             if (mSequenceResetQueued)
             {
                 mNoteSequencePosition = mSequencePosition; // Sync Note-Seq to Main-Seq
+                
+                auto* delayTimeParam = mValueTreeState.getParameter("delayTime");
+                if (delayTimeParam != nullptr)
+                    delayTimeParam->setValueNotifyingHost(0.0f); // Reset DelayTime to 0
+
                 mSequenceResetQueued = false;
             }
 
