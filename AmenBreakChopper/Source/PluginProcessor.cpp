@@ -16,6 +16,12 @@ AmenBreakChopperAudioProcessor::AmenBreakChopperAudioProcessor()
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
        mValueTreeState(*this, nullptr, "PARAMETERS", createParameterLayout())
 {
+    // OSC Sender
+    mSender.connect("127.0.0.1", 9001);
+
+    // OSC Receiver
+    mReceiver.addListener(this);
+    mReceiver.connect(9002);
 }
 
 AmenBreakChopperAudioProcessor::~AmenBreakChopperAudioProcessor()
@@ -27,9 +33,14 @@ juce::AudioProcessorValueTreeState::ParameterLayout AmenBreakChopperAudioProcess
 {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
 
+    juce::StringArray controlModes = { "Internal", "OSC" };
+
+    layout.add(std::make_unique<juce::AudioParameterChoice>("controlMode", "Control Mode", controlModes, 0));
     layout.add(std::make_unique<juce::AudioParameterInt>("delayTime", "Delay Time", 0, 15, 0));
     layout.add(std::make_unique<juce::AudioParameterInt>("sequencePosition", "Sequence Position", 0, 15, 0));
     layout.add(std::make_unique<juce::AudioParameterInt>("noteSequencePosition", "Note Sequence Position", 0, 15, 0));
+    layout.add(std::make_unique<juce::AudioParameterInt>("midiInputChannel", "MIDI In Channel", 0, 16, 0));
+    layout.add(std::make_unique<juce::AudioParameterInt>("midiOutputChannel", "MIDI Out Channel", 1, 16, 1));
 
     return layout;
 }
@@ -182,7 +193,6 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
         return;
     }
 
-    // We must clear the audio buffer, but not the MIDI buffer as we are adding to it.
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
@@ -201,33 +211,42 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     }
     const double samplesPerEighthNote = (60.0 / bpm) * 0.5 * mSampleRate;
 
+    // --- Get current parameter values ---
+    auto* modeParam = mValueTreeState.getRawParameterValue("controlMode");
+    const bool isInternalMode = modeParam->load() < 0.5f;
+    const int midiInChannel = (int)mValueTreeState.getRawParameterValue("midiInputChannel")->load();
+    const int midiOutChannel = (int)mValueTreeState.getRawParameterValue("midiOutputChannel")->load();
+
     // --- Process incoming MIDI messages ---
-    juce::MidiBuffer processedMidi;
     juce::MidiMessage message;
     int time;
     for (juce::MidiBuffer::Iterator i (midiMessages); i.getNextEvent (message, time);)
     {
-        if (message.isNoteOn())
+        // Omni mode: if midiInChannel is 0, accept all channels.
+        if (midiInChannel == 0 || message.getChannel() == midiInChannel)
         {
-            int noteNumber = message.getNoteNumber();
-            if (noteNumber >= 0 && noteNumber <= 15)
+            if (message.isNoteOn())
             {
-                mLastReceivedNoteValue = noteNumber;
-                mNoteSequencePosition = noteNumber; // MIDI note overrides the note sequence
-                mNewNoteReceived = true;
+                int noteNumber = message.getNoteNumber();
+                if (noteNumber >= 0 && noteNumber <= 15)
+                {
+                    mLastReceivedNoteValue = noteNumber;
+                    mNoteSequencePosition = noteNumber; // MIDI note overrides the note sequence
+                    mNewNoteReceived = true;
+                }
+            }
+            else if (message.isController())
+            {
+                if (message.getControllerNumber() == 93) // Sequence Reset CC
+                    mSequenceResetQueued = true;
+                if (message.getControllerNumber() == 106) // Timer Reset CC
+                    mTimerResetQueued = true;
+                if (message.getControllerNumber() == 97) // Soft Reset CC
+                    mSoftResetQueued = true;
             }
         }
-        else if (message.isController())
-        {
-            if (message.getControllerNumber() == 93) // Sequence Reset CC
-                mSequenceResetQueued = true;
-            if (message.getControllerNumber() == 106) // Timer Reset CC
-                mTimerResetQueued = true;
-            if (message.getControllerNumber() == 97) // Soft Reset CC
-                mSoftResetQueued = true;
-        }
     }
-    midiMessages.clear(); // Clear incoming messages after processing
+    midiMessages.clear();
 
     // --- Main sample-by-sample processing loop ---
     for (int sample = 0; sample < bufferLength; ++sample)
@@ -263,7 +282,7 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
                 mSoftResetQueued = false;
             }
 
-            if (mNewNoteReceived)
+            if (mNewNoteReceived && isInternalMode)
             {
                 // --- Calculate new DelayTime based on sequencer and last note ---
                 const int diff = mSequencePosition - mLastReceivedNoteValue;
@@ -283,16 +302,19 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
             if (noteSeqPosParam != nullptr)
                 noteSeqPosParam->setValueNotifyingHost(static_cast<float>(mNoteSequencePosition) / 15.0f);
             
-            // --- Generate MIDI Output ---
-            const int note1 = mSequencePosition;
-            const int note2 = 32 + mNoteSequencePosition;
-            const juce::uint8 velocity = 100;
-            const int noteDurationInSamples = 50; // approx 1ms
+            // --- Send OSC and MIDI Messages ---
+            mSender.send(juce::OSCMessage("/sequencePosition", mSequencePosition));
+            mSender.send(juce::OSCMessage("/noteSequencePosition", mNoteSequencePosition));
 
-            midiMessages.addEvent(juce::MidiMessage::noteOn(1, note1, velocity), sample);
-            midiMessages.addEvent(juce::MidiMessage::noteOff(1, note1), sample + noteDurationInSamples);
-            midiMessages.addEvent(juce::MidiMessage::noteOn(1, note2, velocity), sample);
-            midiMessages.addEvent(juce::MidiMessage::noteOff(1, note2), sample + noteDurationInSamples);
+            const int note1 = mNoteSequencePosition; // Swapped
+            const int note2 = 32 + mSequencePosition;    // Swapped
+            const juce::uint8 velocity = 100;
+            const int noteDurationInSamples = 50;
+
+            midiMessages.addEvent(juce::MidiMessage::noteOn(midiOutChannel, note1, velocity), sample);
+            midiMessages.addEvent(juce::MidiMessage::noteOff(midiOutChannel, note1), sample + noteDurationInSamples);
+            midiMessages.addEvent(juce::MidiMessage::noteOn(midiOutChannel, note2, velocity), sample);
+            midiMessages.addEvent(juce::MidiMessage::noteOff(midiOutChannel, note2), sample + noteDurationInSamples);
 
             mNewNoteReceived = false; // Reset flag after each tick
 
@@ -349,6 +371,24 @@ bool AmenBreakChopperAudioProcessor::hasEditor() const
 juce::AudioProcessorEditor* AmenBreakChopperAudioProcessor::createEditor()
 {
     return new AmenBreakChopperAudioProcessorEditor (*this);
+}
+
+//==============================================================================
+void AmenBreakChopperAudioProcessor::oscMessageReceived(const juce::OSCMessage& message)
+{
+    if (message.getAddressPattern() == "/delayTime")
+    {
+        if (message.size() > 0 && message[0].isInt32())
+        {
+            int newDelayTime = message[0].getInt32();
+            if (newDelayTime >= 0 && newDelayTime <= 15)
+            {
+                auto* delayTimeParam = mValueTreeState.getParameter("delayTime");
+                if (delayTimeParam != nullptr)
+                    delayTimeParam->setValueNotifyingHost(static_cast<float>(newDelayTime) / 15.0f);
+            }
+        }
+    }
 }
 
 //==============================================================================

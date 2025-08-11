@@ -3,8 +3,8 @@
 <JUCERPROJECT id="GUwkNr" name="AmenBreakChopper" projectType="audioplug" useAppConfig="0"
               addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" version="0.1.0"
               pluginFormats="buildAU,buildAUv3,buildStandalone,buildVST3" pluginCharacteristicsValue="pluginEditorRequiresKeys,pluginProducesMidiOut,pluginWantsAudioInput,pluginWantsMidiIn"
-              pluginManufacturer="Ca5" pluginChannelConfigs="{2, 2}" bundleIdentifier="me.ca5.AmenBreakChopper"
-              companyWebsite="ca5.me">
+              pluginManufacturer="Ca5" bundleIdentifier="me.ca5.AmenBreakChopper"
+              companyWebsite="ca5.me" pluginVST3Category="Fx">
   <MAINGROUP id="S0hQmt" name="AmenBreakChopper">
     <GROUP id="{101FC8C6-A385-E9E1-9E75-0DF8BD5A44EF}" name="Source">
       <FILE id="JBdIQg" name="PluginProcessor.cpp" compile="1" resource="0"
@@ -30,6 +30,7 @@
     <MODULE id="juce_graphics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
     <MODULE id="juce_gui_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
     <MODULE id="juce_gui_extra" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_osc" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
   </MODULES>
   <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1" JUCE_VST3_CAN_REPLACE_VST2="0"/>
   <EXPORTFORMATS>
@@ -51,6 +52,7 @@
         <MODULEPATH id="juce_graphics" path="../../external/JUCE/modules"/>
         <MODULEPATH id="juce_gui_basics" path="../../external/JUCE/modules"/>
         <MODULEPATH id="juce_gui_extra" path="../../external/JUCE/modules"/>
+        <MODULEPATH id="juce_osc" path="../../external/JUCE/modules"/>
       </MODULEPATHS>
     </XCODE_MAC>
     <XCODE_IPHONE targetFolder="Builds/iOS" customPList="&lt;plist&gt;&lt;dict&gt;&#10; &lt;key&gt;NSMicrophoneUsageDescription&lt;/key&gt;&#10;&lt;string&gt;This app uses the microphone to process live audio with its delay effect.&lt;/string&gt;&#10;&lt;/dict&gt;&lt;/plist&gt;">
@@ -71,6 +73,7 @@
         <MODULEPATH id="juce_graphics" path="/Users/ca5/project/external/JUCE/modules"/>
         <MODULEPATH id="juce_gui_basics" path="/Users/ca5/project/external/JUCE/modules"/>
         <MODULEPATH id="juce_gui_extra" path="/Users/ca5/project/external/JUCE/modules"/>
+        <MODULEPATH id="juce_osc" path="../../external/JUCE/modules"/>
       </MODULEPATHS>
     </XCODE_IPHONE>
   </EXPORTFORMATS>

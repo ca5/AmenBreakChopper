@@ -8,12 +8,14 @@
 
 #pragma once
 
-#include <JuceHeader.h>
+#include <juce_audio_processors/juce_audio_processors.h>
+#include <juce_osc/juce_osc.h>
 
 //==============================================================================
 /**
 */
-class AmenBreakChopperAudioProcessor  : public juce::AudioProcessor
+class AmenBreakChopperAudioProcessor  : public juce::AudioProcessor,
+                                      private juce::OSCReceiver::Listener<juce::OSCReceiver::MessageLoopCallback>
 {
 public:
     //==============================================================================
@@ -73,6 +75,12 @@ private:
     bool mTimerResetQueued { false };
     bool mNewNoteReceived { false };
     bool mSoftResetQueued { false };
+
+    // --- OSC State ---
+    juce::OSCSender mSender;
+    juce::OSCReceiver mReceiver;
+
+    void oscMessageReceived (const juce::OSCMessage& message) override;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AmenBreakChopperAudioProcessor)
 };
