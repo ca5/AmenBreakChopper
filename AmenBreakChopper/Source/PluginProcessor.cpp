@@ -182,6 +182,7 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
         return;
     }
 
+    // We must clear the audio buffer, but not the MIDI buffer as we are adding to it.
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
@@ -201,6 +202,7 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     const double samplesPerEighthNote = (60.0 / bpm) * 0.5 * mSampleRate;
 
     // --- Process incoming MIDI messages ---
+    juce::MidiBuffer processedMidi;
     juce::MidiMessage message;
     int time;
     for (juce::MidiBuffer::Iterator i (midiMessages); i.getNextEvent (message, time);)
@@ -225,7 +227,7 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
                 mSoftResetQueued = true;
         }
     }
-    midiMessages.clear();
+    midiMessages.clear(); // Clear incoming messages after processing
 
     // --- Main sample-by-sample processing loop ---
     for (int sample = 0; sample < bufferLength; ++sample)
@@ -281,6 +283,17 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
             if (noteSeqPosParam != nullptr)
                 noteSeqPosParam->setValueNotifyingHost(static_cast<float>(mNoteSequencePosition) / 15.0f);
             
+            // --- Generate MIDI Output ---
+            const int note1 = mSequencePosition;
+            const int note2 = 32 + mNoteSequencePosition;
+            const juce::uint8 velocity = 100;
+            const int noteDurationInSamples = 50; // approx 1ms
+
+            midiMessages.addEvent(juce::MidiMessage::noteOn(1, note1, velocity), sample);
+            midiMessages.addEvent(juce::MidiMessage::noteOff(1, note1), sample + noteDurationInSamples);
+            midiMessages.addEvent(juce::MidiMessage::noteOn(1, note2, velocity), sample);
+            midiMessages.addEvent(juce::MidiMessage::noteOff(1, note2), sample + noteDurationInSamples);
+
             mNewNoteReceived = false; // Reset flag after each tick
 
             // --- Increment sequencers ---
