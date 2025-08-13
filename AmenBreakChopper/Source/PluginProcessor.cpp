@@ -16,12 +16,7 @@ AmenBreakChopperAudioProcessor::AmenBreakChopperAudioProcessor()
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
        mValueTreeState(*this, nullptr, "PARAMETERS", createParameterLayout())
 {
-    // OSC Sender
-    mSender.connect("127.0.0.1", 9001);
-
-    // OSC Receiver
     mReceiver.addListener(this);
-    mReceiver.connect(9002);
 }
 
 AmenBreakChopperAudioProcessor::~AmenBreakChopperAudioProcessor()
@@ -114,6 +109,14 @@ void AmenBreakChopperAudioProcessor::changeProgramName (int index, const juce::S
 //==============================================================================
 void AmenBreakChopperAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
+    // OSC Sender
+    if (!mSender.connect("127.0.0.1", 9001))
+        juce::Logger::writeToLog("AmenBreakChopper: Failed to connect OSC sender.");
+
+    // OSC Receiver
+    if (!mReceiver.connect(9002))
+        juce::Logger::writeToLog("AmenBreakChopper: Failed to connect OSC receiver.");
+
     mSampleRate = sampleRate;
 
     const int numChannels = getTotalNumInputChannels();

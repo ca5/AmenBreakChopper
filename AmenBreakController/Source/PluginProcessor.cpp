@@ -16,12 +16,7 @@ AmenBreakControllerAudioProcessor::AmenBreakControllerAudioProcessor()
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
        mValueTreeState(*this, nullptr, "PARAMETERS", createParameterLayout())
 {
-    // OSC Sender
-    mSender.connect("127.0.0.1", 9002);
-
-    // OSC Receiver
     mReceiver.addListener(this);
-    mReceiver.connect(9001);
 }
 
 AmenBreakControllerAudioProcessor::~AmenBreakControllerAudioProcessor()
@@ -50,6 +45,14 @@ juce::AudioProcessorValueTreeState& AmenBreakControllerAudioProcessor::getValueT
 //==============================================================================
 void AmenBreakControllerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
+    // OSC Sender
+    if (!mSender.connect("127.0.0.1", 9002))
+        juce::Logger::writeToLog("AmenBreakController: Failed to connect OSC sender.");
+
+    // OSC Receiver
+    if (!mReceiver.connect(9001))
+        juce::Logger::writeToLog("AmenBreakController: Failed to connect OSC receiver.");
+
     mSampleRate = sampleRate;
     // Initialize sequencer state
     mSamplesUntilNextEighthNote = 0.0;
