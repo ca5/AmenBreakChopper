@@ -2,7 +2,7 @@
 
 <JUCERPROJECT id="wei8t2" name="AmenBreakController" projectType="audioplug"
               useAppConfig="0" addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1"
-              pluginCharacteristicsValue="pluginIsMidiEffect,pluginProducesMidiOut,pluginWantsMidiIn"
+              pluginCharacteristicsValue="pluginProducesMidiOut,pluginWantsMidiIn"
               companyWebsite="ca5.me" bundleIdentifier="me.ca5.AmenBreakController"
               companyName="Ca5" version="0.01" pluginChannelConfigs="">
   <MAINGROUP id="aRVYit" name="AmenBreakController">
