@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <JUCERPROJECT id="GUwkNr" name="AmenBreakChopper" projectType="audioplug" useAppConfig="0"
-              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" version="0.1.0"
+              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" version="0.2.0"
               pluginFormats="buildAU,buildAUv3,buildStandalone,buildVST3" pluginCharacteristicsValue="pluginEditorRequiresKeys,pluginProducesMidiOut,pluginWantsAudioInput,pluginWantsMidiIn"
               pluginManufacturer="Ca5" bundleIdentifier="me.ca5.AmenBreakChopper"
-              companyWebsite="ca5.me" pluginVST3Category="Fx">
+              companyWebsite="ca5.me" pluginVST3Category="Fx" projectLineFeed="&#10;">
   <MAINGROUP id="S0hQmt" name="AmenBreakChopper">
     <GROUP id="{101FC8C6-A385-E9E1-9E75-0DF8BD5A44EF}" name="Source">
       <FILE id="JBdIQg" name="PluginProcessor.cpp" compile="1" resource="0"

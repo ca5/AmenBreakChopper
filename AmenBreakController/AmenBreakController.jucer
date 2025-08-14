@@ -4,7 +4,7 @@
               useAppConfig="0" addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1"
               pluginCharacteristicsValue="pluginProducesMidiOut,pluginWantsMidiIn"
               companyWebsite="ca5.me" bundleIdentifier="me.ca5.AmenBreakController"
-              companyName="Ca5" version="0.01" pluginChannelConfigs="">
+              companyName="Ca5" version="0.0.1" pluginChannelConfigs="" projectLineFeed="&#10;">
   <MAINGROUP id="aRVYit" name="AmenBreakController">
     <GROUP id="{ED49D22F-BB7E-FCA7-2663-4AE8D539DA47}" name="Source">
       <FILE id="LaEQoJ" name="PluginProcessor.cpp" compile="1" resource="0"
