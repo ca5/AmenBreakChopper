@@ -417,6 +417,10 @@ void AmenBreakChopperAudioProcessor::oscMessageReceived(const juce::OSCMessage& 
 void AmenBreakChopperAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
     auto state = mValueTreeState.copyState();
+    // These parameters should not be saved with the project.
+    state.removeProperty("delayTime", nullptr);
+    state.removeProperty("sequencePosition", nullptr);
+    state.removeProperty("noteSequencePosition", nullptr);
     std::unique_ptr<juce::XmlElement> xml(state.createXml());
     copyXmlToBinary(*xml, destData);
 }
@@ -428,6 +432,14 @@ void AmenBreakChopperAudioProcessor::setStateInformation (const void* data, int 
     if (xmlState.get() != nullptr)
         if (xmlState->hasTagName(mValueTreeState.state.getType()))
             mValueTreeState.replaceState(juce::ValueTree::fromXml(*xmlState));
+
+    // Always reset these parameters to 0 on load.
+    if (auto* p = mValueTreeState.getParameter("delayTime"))
+        p->setValueNotifyingHost(p->getDefaultValue());
+    if (auto* p = mValueTreeState.getParameter("sequencePosition"))
+        p->setValueNotifyingHost(p->getDefaultValue());
+    if (auto* p = mValueTreeState.getParameter("noteSequencePosition"))
+        p->setValueNotifyingHost(p->getDefaultValue());
 }
 
 //==============================================================================
