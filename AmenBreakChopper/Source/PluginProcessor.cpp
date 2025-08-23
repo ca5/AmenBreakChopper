@@ -316,7 +316,7 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
             mSoftResetQueued = false;
         }
 
-        if (mNewNoteReceived && isInternalMode)
+        if (mNewNoteReceived)
         {
             const int diff = mSequencePosition - mLastReceivedNoteValue;
             const int newDelayTime = (diff % 16 + 16) % 16;
