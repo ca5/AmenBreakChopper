@@ -42,6 +42,7 @@ private:
 
     juce::ComboBox mControlModeComboBox;
 
+    juce::Label mStatusLabel;
     juce::Label mControlModeLabel, mDelayTimeLabel, mSequencePositionLabel, mNoteSequencePositionLabel, mMidiInputChannelLabel, mMidiOutputChannelLabel;
 
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mDelayTimeAttachment;
