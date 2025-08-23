@@ -15,7 +15,8 @@
 /**
 */
 class AmenBreakControllerAudioProcessor  : public juce::AudioProcessor,
-                                           private juce::OSCReceiver::Listener<juce::OSCReceiver::MessageLoopCallback>
+                                           private juce::OSCReceiver::Listener<juce::OSCReceiver::MessageLoopCallback>,
+                                           public juce::AudioProcessorValueTreeState::Listener
 {
 public:
     //==============================================================================
@@ -56,23 +57,18 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
 
     juce::AudioProcessorValueTreeState& getValueTreeState();
+    void setOscHostAddress(const juce::String& hostAddress);
+    void sendOscMessage(const juce::OSCMessage& message);
 
 private:
     //==============================================================================
+    void parameterChanged(const juce::String& parameterID, float newValue) override;
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     juce::AudioProcessorValueTreeState mValueTreeState;
 
-    double mSampleRate { 0.0 };
-
-    // --- Sequencer State ---
-    double mSamplesUntilNextEighthNote { 0.0 };
-    int mSequencePosition { 0 };
-    int mNoteSequencePosition { 0 };
-    int mLastReceivedNoteValue { 0 };
-    bool mSequenceResetQueued { false };
-    bool mTimerResetQueued { false };
-    bool mNewNoteReceived { false };
-    bool mSoftResetQueued { false };
+    // --- Thread-safe MIDI queue for OSC->MIDI feedback ---
+    juce::CriticalSection mQueueLock;
+    juce::MidiBuffer mMidiOutputQueue;
 
     // --- OSC State ---
     juce::OSCSender mSender;

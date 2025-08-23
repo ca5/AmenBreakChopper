@@ -411,6 +411,31 @@ void AmenBreakChopperAudioProcessor::oscMessageReceived(const juce::OSCMessage& 
             }
         }
     }
+    else if (message.getAddressPattern() == "/sequenceReset")
+    {
+        mSequenceResetQueued = true;
+    }
+    else if (message.getAddressPattern() == "/timerReset")
+    {
+        mTimerResetQueued = true;
+    }
+    else if (message.getAddressPattern() == "/softReset")
+    {
+        mSoftResetQueued = true;
+    }
+    else if (message.getAddressPattern() == "/setNoteSequencePosition")
+    {
+        if (message.size() > 0 && message[0].isInt32())
+        {
+            int noteNumber = message[0].getInt32();
+            if (noteNumber >= 0 && noteNumber <= 15)
+            {
+                mLastReceivedNoteValue = noteNumber;
+                mNoteSequencePosition = noteNumber; // OSC note overrides the note sequence
+                mNewNoteReceived = true;
+            }
+        }
+    }
 }
 
 //==============================================================================

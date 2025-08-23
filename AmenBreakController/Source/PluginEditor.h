@@ -13,7 +13,9 @@
 //==============================================================================
 /**
 */
-class AmenBreakControllerAudioProcessorEditor  : public juce::AudioProcessorEditor
+class AmenBreakControllerAudioProcessorEditor  : public juce::AudioProcessorEditor,
+                                                   public juce::TextEditor::Listener,
+                                                   public juce::Button::Listener
 {
 public:
     AmenBreakControllerAudioProcessorEditor (AmenBreakControllerAudioProcessor&);
@@ -22,27 +24,48 @@ public:
     //==============================================================================
     void paint (juce::Graphics&) override;
     void resized() override;
+    void textEditorTextChanged(juce::TextEditor& editor) override;
+    void buttonClicked(juce::Button* button) override;
 
 private:
     AmenBreakControllerAudioProcessor& audioProcessor;
 
-    juce::Slider mDelayTimeSlider;
+    // Live Status
+    juce::Label mStatusLabel;
     juce::Slider mSequencePositionSlider;
     juce::Slider mNoteSequencePositionSlider;
+    juce::Label mSequencePositionLabel;
+    juce::Label mNoteSequencePositionLabel;
 
+    // MIDI Config
+    juce::Label mMidiConfigLabel;
     juce::Slider mMidiInputChannelSlider;
     juce::Slider mMidiOutputChannelSlider;
+    juce::Label mMidiInputChannelLabel;
+    juce::Label mMidiOutputChannelLabel;
 
-    juce::ComboBox mControlModeComboBox;
+    // OSC Config
+    juce::Label mOscConfigLabel;
+    juce::TextEditor mOscHostAddressEditor;
+    juce::Slider mOscSendPortSlider;
+    juce::Slider mOscReceivePortSlider;
+    juce::Label mOscHostAddressLabel;
+    juce::Label mOscSendPortLabel;
+    juce::Label mOscReceivePortLabel;
 
-    juce::Label mControlModeLabel, mDelayTimeLabel, mSequencePositionLabel, mNoteSequencePositionLabel, mMidiInputChannelLabel, mMidiOutputChannelLabel;
+    // OSC Trigger Buttons
+    juce::Label mOscTriggerLabel;
+    juce::TextButton mSequenceResetButton;
+    juce::TextButton mTimerResetButton;
+    juce::TextButton mSoftResetButton;
 
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mDelayTimeAttachment;
+    // Attachments
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mSequencePositionAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mNoteSequencePositionAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mMidiInputChannelAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mMidiOutputChannelAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> mControlModeAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mOscSendPortAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mOscReceivePortAttachment;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AmenBreakControllerAudioProcessorEditor)
 };
