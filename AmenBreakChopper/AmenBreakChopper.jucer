@@ -15,6 +15,7 @@
             file="Source/PluginEditor.cpp"/>
       <FILE id="G9WeP8" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
     </GROUP>
+    <FILE id="bGlVot" name="1024.png" compile="0" resource="1" file="../../../Downloads/AppIcons/Assets.xcassets/AppIcon.appiconset/1024.png"/>
   </MAINGROUP>
   <MODULES>
     <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
@@ -55,7 +56,8 @@
         <MODULEPATH id="juce_osc" path="../../external/JUCE/modules"/>
       </MODULEPATHS>
     </XCODE_MAC>
-    <XCODE_IPHONE targetFolder="Builds/iOS" customPList="&lt;plist&gt;&lt;dict&gt;&#10; &lt;key&gt;NSMicrophoneUsageDescription&lt;/key&gt;&#10;&lt;string&gt;This app uses the microphone to process live audio with its delay effect.&lt;/string&gt;&#10;&lt;/dict&gt;&lt;/plist&gt;">
+    <XCODE_IPHONE targetFolder="Builds/iOS" customPList="&lt;plist&gt;&lt;dict&gt;&#10; &lt;key&gt;NSMicrophoneUsageDescription&lt;/key&gt;&#10;&lt;string&gt;This app uses the microphone to process live audio with its delay effect.&lt;/string&gt;&#10;&lt;/dict&gt;&lt;/plist&gt;"
+                  bigIcon="bGlVot" smallIcon="bGlVot">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" targetName="ABC"/>
         <CONFIGURATION isDebug="0" name="Release" targetName="ABC"/>
