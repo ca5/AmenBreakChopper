@@ -29,7 +29,7 @@ public:
     void parameterChanged(const juce::String& parameterID, float newValue) override;
 
 private:
-    void updateOscControlsEnablement();
+    void updateControlEnablement();
 
     AmenBreakChopperAudioProcessor& audioProcessor;
 

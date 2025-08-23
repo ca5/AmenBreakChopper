@@ -119,7 +119,7 @@ AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor (Amen
     audioProcessor.getValueTreeState().addParameterListener("controlMode", this);
 
     // Set initial state
-    updateOscControlsEnablement();
+    updateControlEnablement();
 
     setSize (400, 570);
 }
@@ -211,20 +211,36 @@ void AmenBreakChopperAudioProcessorEditor::parameterChanged(const juce::String& 
 {
     if (parameterID == "controlMode")
     {
-        updateOscControlsEnablement();
+        updateControlEnablement();
     }
 }
 
-void AmenBreakChopperAudioProcessorEditor::updateOscControlsEnablement()
+void AmenBreakChopperAudioProcessorEditor::updateControlEnablement()
 {
     auto* controlModeParam = audioProcessor.getValueTreeState().getRawParameterValue("controlMode");
-    const bool oscIsEnabled = controlModeParam->load() > 0.5f; // 0 is Internal, 1 is OSC
+    const bool isOscMode = controlModeParam->load() > 0.5f; // 0 is Internal, 1 is OSC
 
-    mOscConfigLabel.setEnabled(oscIsEnabled);
-    mOscHostAddressLabel.setEnabled(oscIsEnabled);
-    mOscHostAddressEditor.setEnabled(oscIsEnabled);
-    mOscSendPortLabel.setEnabled(oscIsEnabled);
-    mOscSendPortSlider.setEnabled(oscIsEnabled);
-    mOscReceivePortLabel.setEnabled(oscIsEnabled);
-    mOscReceivePortSlider.setEnabled(oscIsEnabled);
+    // OSC controls are enabled in OSC mode
+    mOscConfigLabel.setEnabled(isOscMode);
+    mOscHostAddressLabel.setEnabled(isOscMode);
+    mOscHostAddressEditor.setEnabled(isOscMode);
+    mOscSendPortLabel.setEnabled(isOscMode);
+    mOscSendPortSlider.setEnabled(isOscMode);
+    mOscReceivePortLabel.setEnabled(isOscMode);
+    mOscReceivePortSlider.setEnabled(isOscMode);
+
+    // MIDI controls are enabled in Internal mode (i.e., NOT OSC mode)
+    const bool isInternalMode = !isOscMode;
+    mMidiInputChannelLabel.setEnabled(isInternalMode);
+    mMidiInputChannelSlider.setEnabled(isInternalMode);
+    mMidiOutputChannelLabel.setEnabled(isInternalMode);
+    mMidiOutputChannelSlider.setEnabled(isInternalMode);
+
+    mMidiCcConfigLabel.setEnabled(isInternalMode);
+    mMidiCcSeqResetLabel.setEnabled(isInternalMode);
+    mMidiCcSeqResetSlider.setEnabled(isInternalMode);
+    mMidiCcTimerResetLabel.setEnabled(isInternalMode);
+    mMidiCcTimerResetSlider.setEnabled(isInternalMode);
+    mMidiCcSoftResetLabel.setEnabled(isInternalMode);
+    mMidiCcSoftResetSlider.setEnabled(isInternalMode);
 }
