@@ -10,7 +10,7 @@
 #include "PluginEditor.h"
 
 //==============================================================================
-AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor (AmenBreakChopperAudioProcessor& p)
+AmenBreakControllerAudioProcessorEditor::AmenBreakControllerAudioProcessorEditor (AmenBreakControllerAudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
     // Labels
@@ -61,21 +61,22 @@ AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor (Amen
     mNoteSequencePositionAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "noteSequencePosition", mNoteSequencePositionSlider));
     mMidiInputChannelAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "midiInputChannel", mMidiInputChannelSlider));
     mMidiOutputChannelAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "midiOutputChannel", mMidiOutputChannelSlider));
+    mControlModeAttachment.reset(new juce::AudioProcessorValueTreeState::ComboBoxAttachment(audioProcessor.getValueTreeState(), "controlMode", mControlModeComboBox));
 
     setSize (400, 310);
 }
 
-AmenBreakChopperAudioProcessorEditor::~AmenBreakChopperAudioProcessorEditor()
+AmenBreakControllerAudioProcessorEditor::~AmenBreakControllerAudioProcessorEditor()
 {
 }
 
 //==============================================================================
-void AmenBreakChopperAudioProcessorEditor::paint (juce::Graphics& g)
+void AmenBreakControllerAudioProcessorEditor::paint (juce::Graphics& g)
 {
     g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
 }
 
-void AmenBreakChopperAudioProcessorEditor::resized()
+void AmenBreakControllerAudioProcessorEditor::resized()
 {
     const int labelWidth = 150;
     const int controlWidth = getWidth() - labelWidth - 20;

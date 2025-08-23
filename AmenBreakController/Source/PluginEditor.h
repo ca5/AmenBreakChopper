@@ -8,24 +8,23 @@
 
 #pragma once
 
-#include <JuceHeader.h>
 #include "PluginProcessor.h"
 
 //==============================================================================
 /**
 */
-class AmenBreakChopperAudioProcessorEditor  : public juce::AudioProcessorEditor
+class AmenBreakControllerAudioProcessorEditor  : public juce::AudioProcessorEditor
 {
 public:
-    AmenBreakChopperAudioProcessorEditor (AmenBreakChopperAudioProcessor&);
-    ~AmenBreakChopperAudioProcessorEditor() override;
+    AmenBreakControllerAudioProcessorEditor (AmenBreakControllerAudioProcessor&);
+    ~AmenBreakControllerAudioProcessorEditor() override;
 
     //==============================================================================
     void paint (juce::Graphics&) override;
     void resized() override;
 
 private:
-    AmenBreakChopperAudioProcessor& audioProcessor;
+    AmenBreakControllerAudioProcessor& audioProcessor;
 
     juce::Slider mDelayTimeSlider;
     juce::Slider mSequencePositionSlider;
@@ -45,5 +44,5 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mMidiOutputChannelAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> mControlModeAttachment;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AmenBreakChopperAudioProcessorEditor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AmenBreakControllerAudioProcessorEditor)
 };

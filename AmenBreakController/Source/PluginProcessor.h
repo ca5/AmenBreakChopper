@@ -14,13 +14,13 @@
 //==============================================================================
 /**
 */
-class AmenBreakChopperAudioProcessor  : public juce::AudioProcessor,
-                                      private juce::OSCReceiver::Listener<juce::OSCReceiver::MessageLoopCallback>
+class AmenBreakControllerAudioProcessor  : public juce::AudioProcessor,
+                                           private juce::OSCReceiver::Listener<juce::OSCReceiver::MessageLoopCallback>
 {
 public:
     //==============================================================================
-    AmenBreakChopperAudioProcessor();
-    ~AmenBreakChopperAudioProcessor() override;
+    AmenBreakControllerAudioProcessor();
+    ~AmenBreakControllerAudioProcessor() override;
 
     //==============================================================================
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
@@ -62,8 +62,6 @@ private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     juce::AudioProcessorValueTreeState mValueTreeState;
 
-    juce::AudioBuffer<float> mDelayBuffer;
-    int mWritePosition { 0 };
     double mSampleRate { 0.0 };
 
     // --- Sequencer State ---
@@ -82,5 +80,5 @@ private:
 
     void oscMessageReceived (const juce::OSCMessage& message) override;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AmenBreakChopperAudioProcessor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AmenBreakControllerAudioProcessor)
 };
