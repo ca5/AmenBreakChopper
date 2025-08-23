@@ -115,11 +115,18 @@ AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor (Amen
     mMidiCcTimerResetAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "midiCcTimerReset", mMidiCcTimerResetSlider));
     mMidiCcSoftResetAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "midiCcSoftReset", mMidiCcSoftResetSlider));
 
+    // Add listener for controlMode
+    audioProcessor.getValueTreeState().addParameterListener("controlMode", this);
+
+    // Set initial state
+    updateOscControlsEnablement();
+
     setSize (400, 570);
 }
 
 AmenBreakChopperAudioProcessorEditor::~AmenBreakChopperAudioProcessorEditor()
 {
+    audioProcessor.getValueTreeState().removeParameterListener("controlMode", this);
 }
 
 //==============================================================================
@@ -198,4 +205,26 @@ void AmenBreakChopperAudioProcessorEditor::textEditorTextChanged(juce::TextEdito
     {
         audioProcessor.setOscHostAddress(mOscHostAddressEditor.getText());
     }
+}
+
+void AmenBreakChopperAudioProcessorEditor::parameterChanged(const juce::String& parameterID, float newValue)
+{
+    if (parameterID == "controlMode")
+    {
+        updateOscControlsEnablement();
+    }
+}
+
+void AmenBreakChopperAudioProcessorEditor::updateOscControlsEnablement()
+{
+    auto* controlModeParam = audioProcessor.getValueTreeState().getRawParameterValue("controlMode");
+    const bool oscIsEnabled = controlModeParam->load() > 0.5f; // 0 is Internal, 1 is OSC
+
+    mOscConfigLabel.setEnabled(oscIsEnabled);
+    mOscHostAddressLabel.setEnabled(oscIsEnabled);
+    mOscHostAddressEditor.setEnabled(oscIsEnabled);
+    mOscSendPortLabel.setEnabled(oscIsEnabled);
+    mOscSendPortSlider.setEnabled(oscIsEnabled);
+    mOscReceivePortLabel.setEnabled(oscIsEnabled);
+    mOscReceivePortSlider.setEnabled(oscIsEnabled);
 }
