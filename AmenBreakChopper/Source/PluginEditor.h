@@ -14,7 +14,8 @@
 //==============================================================================
 /**
 */
-class AmenBreakChopperAudioProcessorEditor  : public juce::AudioProcessorEditor
+class AmenBreakChopperAudioProcessorEditor  : public juce::AudioProcessorEditor,
+                                              public juce::TextEditor::Listener
 {
 public:
     AmenBreakChopperAudioProcessorEditor (AmenBreakChopperAudioProcessor&);
@@ -23,6 +24,7 @@ public:
     //==============================================================================
     void paint (juce::Graphics&) override;
     void resized() override;
+    void textEditorTextChanged(juce::TextEditor& editor) override;
 
 private:
     AmenBreakChopperAudioProcessor& audioProcessor;
@@ -44,6 +46,30 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mMidiInputChannelAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mMidiOutputChannelAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> mControlModeAttachment;
+
+    // New controls
+    juce::Label mOscConfigLabel;
+    juce::Label mOscHostAddressLabel;
+    juce::TextEditor mOscHostAddressEditor;
+    juce::Label mOscSendPortLabel;
+    juce::Slider mOscSendPortSlider;
+    juce::Label mOscReceivePortLabel;
+    juce::Slider mOscReceivePortSlider;
+
+    juce::Label mMidiCcConfigLabel;
+    juce::Label mMidiCcSeqResetLabel;
+    juce::Slider mMidiCcSeqResetSlider;
+    juce::Label mMidiCcTimerResetLabel;
+    juce::Slider mMidiCcTimerResetSlider;
+    juce::Label mMidiCcSoftResetLabel;
+    juce::Slider mMidiCcSoftResetSlider;
+
+    // New attachments
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mOscSendPortAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mOscReceivePortAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mMidiCcSeqResetAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mMidiCcTimerResetAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mMidiCcSoftResetAttachment;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AmenBreakChopperAudioProcessorEditor)
 };
