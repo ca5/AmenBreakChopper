@@ -11,12 +11,13 @@
 
 //==============================================================================
 AmenBreakControllerAudioProcessor::AmenBreakControllerAudioProcessor()
-     : AudioProcessor (BusesProperties()
-                       .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
-                       .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
+     : AudioProcessor (BusesProperties().withInput("Input", juce::AudioChannelSet::stereo(), true).withOutput("Output", juce::AudioChannelSet::stereo(), true)),
        mValueTreeState(*this, nullptr, "PARAMETERS", createParameterLayout())
 {
+    mValueTreeState.state.setProperty("oscHostAddress", "127.0.0.1", nullptr);
     mReceiver.addListener(this);
+    mValueTreeState.addParameterListener("oscSendPort", this);
+    mValueTreeState.addParameterListener("oscReceivePort", this);
 }
 
 AmenBreakControllerAudioProcessor::~AmenBreakControllerAudioProcessor()
@@ -27,13 +28,14 @@ AmenBreakControllerAudioProcessor::~AmenBreakControllerAudioProcessor()
 juce::AudioProcessorValueTreeState::ParameterLayout AmenBreakControllerAudioProcessor::createParameterLayout()
 {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
-    juce::StringArray controlModes = { "Internal", "OSC" };
-    layout.add(std::make_unique<juce::AudioParameterChoice>("controlMode", "Control Mode", controlModes, 0));
-    layout.add(std::make_unique<juce::AudioParameterInt>("delayTime", "Delay Time", 0, 15, 0));
+
     layout.add(std::make_unique<juce::AudioParameterInt>("sequencePosition", "Sequence Position", 0, 15, 0));
     layout.add(std::make_unique<juce::AudioParameterInt>("noteSequencePosition", "Note Sequence Position", 0, 15, 0));
     layout.add(std::make_unique<juce::AudioParameterInt>("midiInputChannel", "MIDI In Channel", 0, 16, 0));
     layout.add(std::make_unique<juce::AudioParameterInt>("midiOutputChannel", "MIDI Out Channel", 1, 16, 1));
+    layout.add(std::make_unique<juce::AudioParameterInt>("oscSendPort", "OSC Send Port", 1, 65535, 9002));
+    layout.add(std::make_unique<juce::AudioParameterInt>("oscReceivePort", "OSC Receive Port", 1, 65535, 9001));
+
     return layout;
 }
 
@@ -42,27 +44,45 @@ juce::AudioProcessorValueTreeState& AmenBreakControllerAudioProcessor::getValueT
     return mValueTreeState;
 }
 
+void AmenBreakControllerAudioProcessor::parameterChanged(const juce::String& parameterID, float newValue)
+{
+    if (parameterID == "oscSendPort")
+    {
+        auto hostAddress = mValueTreeState.state.getProperty("oscHostAddress").toString();
+        if (!mSender.connect(hostAddress, (int)newValue))
+            juce::Logger::writeToLog("AmenBreakController: Failed to connect OSC sender on port change.");
+    }
+    else if (parameterID == "oscReceivePort")
+    {
+        if (!mReceiver.connect((int)newValue))
+            juce::Logger::writeToLog("AmenBreakController: Failed to connect OSC receiver on port change.");
+    }
+}
+
+void AmenBreakControllerAudioProcessor::setOscHostAddress(const juce::String& hostAddress)
+{
+    mValueTreeState.state.setProperty("oscHostAddress", hostAddress, nullptr);
+    auto sendPort = (int)mValueTreeState.getRawParameterValue("oscSendPort")->load();
+    if (!mSender.connect(hostAddress, sendPort))
+        juce::Logger::writeToLog("AmenBreakController: Failed to connect OSC sender on host change.");
+}
+
+void AmenBreakControllerAudioProcessor::sendOscMessage(const juce::OSCMessage& message)
+{
+    mSender.send(message);
+}
+
 //==============================================================================
 void AmenBreakControllerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    // OSC Sender
-    if (!mSender.connect("127.0.0.1", 9002))
+    auto hostAddress = mValueTreeState.state.getProperty("oscHostAddress").toString();
+    auto sendPort = (int)mValueTreeState.getRawParameterValue("oscSendPort")->load();
+    if (!mSender.connect(hostAddress, sendPort))
         juce::Logger::writeToLog("AmenBreakController: Failed to connect OSC sender.");
 
-    // OSC Receiver
-    if (!mReceiver.connect(9001))
+    auto receivePort = (int)mValueTreeState.getRawParameterValue("oscReceivePort")->load();
+    if (!mReceiver.connect(receivePort))
         juce::Logger::writeToLog("AmenBreakController: Failed to connect OSC receiver.");
-
-    mSampleRate = sampleRate;
-    // Initialize sequencer state
-    mSamplesUntilNextEighthNote = 0.0;
-    mSequencePosition = 0;
-    mNoteSequencePosition = 0;
-    mLastReceivedNoteValue = 0;
-    mSequenceResetQueued = false;
-    mTimerResetQueued = false;
-    mNewNoteReceived = false;
-    mSoftResetQueued = false;
 }
 
 void AmenBreakControllerAudioProcessor::releaseResources()
@@ -71,54 +91,15 @@ void AmenBreakControllerAudioProcessor::releaseResources()
 
 bool AmenBreakControllerAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
-  #if JucePlugin_IsMidiEffect
-    juce::ignoreUnused (layouts);
     return true;
-  #else
-    if (layouts.getMainOutputChannelSet().size() != 0)
-        return false;
-   #if ! JucePlugin_IsSynth
-    if (layouts.getMainInputChannelSet().size() != 0)
-        return false;
-   #endif
-    return true;
-  #endif
 }
 
 void AmenBreakControllerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
     buffer.clear();
-
-    juce::ScopedNoDenormals noDenormals;
-
-    juce::AudioPlayHead* playHead = getPlayHead();
-    bool isPlaying = false;
-    if (playHead != nullptr)
-    {
-        if (auto positionInfo = playHead->getPosition())
-            isPlaying = positionInfo->getIsPlaying();
-    }
-
-    if (!isPlaying)
-        return;
-
-    double bpm = 120.0;
-    if (playHead != nullptr)
-    {
-        if (auto positionInfo = playHead->getPosition())
-        {
-            if (positionInfo->getBpm().hasValue())
-                bpm = *positionInfo->getBpm();
-        }
-    }
-    const double samplesPerEighthNote = (60.0 / bpm) * 0.5 * mSampleRate;
-
-    auto* modeParam = mValueTreeState.getRawParameterValue("controlMode");
-    const bool isInternalMode = modeParam->load() < 0.5f;
     const int midiInChannel = (int)mValueTreeState.getRawParameterValue("midiInputChannel")->load();
-    const int midiOutChannel = (int)mValueTreeState.getRawParameterValue("midiOutputChannel")->load();
 
-    juce::MidiBuffer processedMidi;
+    // --- Handle MIDI In -> OSC Out ---
     for (const auto metadata : midiMessages)
     {
         auto message = metadata.getMessage();
@@ -129,114 +110,90 @@ void AmenBreakControllerAudioProcessor::processBlock (juce::AudioBuffer<float>& 
                 int noteNumber = message.getNoteNumber();
                 if (noteNumber >= 0 && noteNumber <= 15)
                 {
-                    mLastReceivedNoteValue = noteNumber;
-                    mNoteSequencePosition = noteNumber;
-                    mNewNoteReceived = true;
+                    mSender.send(juce::OSCMessage("/setNoteSequencePosition", noteNumber));
                 }
             }
             else if (message.isController())
             {
-                if (message.getControllerNumber() == 93) mSequenceResetQueued = true;
-                if (message.getControllerNumber() == 106) mTimerResetQueued = true;
-                if (message.getControllerNumber() == 97)  mSoftResetQueued = true;
+                if (message.getControllerNumber() == 93) mSender.send(juce::OSCMessage("/sequenceReset"));
+                if (message.getControllerNumber() == 106) mSender.send(juce::OSCMessage("/timerReset"));
+                if (message.getControllerNumber() == 97)  mSender.send(juce::OSCMessage("/softReset"));
             }
         }
     }
-    midiMessages.clear();
+    midiMessages.clear(); // We've processed all incoming MIDI.
 
-    const int bufferLength = buffer.getNumSamples();
-    for (int sample = 0; sample < bufferLength; ++sample)
+    // --- Handle OSC In -> MIDI Out ---
+    const juce::ScopedLock sl (mQueueLock);
+    if (!mMidiOutputQueue.isEmpty())
     {
-        if (mTimerResetQueued)
+        const int noteDurationInSamples = 50;
+        for (const auto& metadata : mMidiOutputQueue)
         {
-            mSamplesUntilNextEighthNote = 0.0;
-            mSequencePosition = 0;
-            mNoteSequencePosition = 0;
-            mTimerResetQueued = false;
+            auto msg = metadata.getMessage();
+            // Note-ons at the start of the buffer, note-offs after a short duration
+            int samplePos = msg.isNoteOff() ? noteDurationInSamples : 0;
+            midiMessages.addEvent(msg, samplePos);
         }
-
-        if (mSamplesUntilNextEighthNote <= 0)
-        {
-            mSamplesUntilNextEighthNote += samplesPerEighthNote;
-
-            if (mSequenceResetQueued)
-            {
-                mNoteSequencePosition = mSequencePosition;
-                auto* delayTimeParam = mValueTreeState.getParameter("delayTime");
-                if (delayTimeParam != nullptr) delayTimeParam->setValueNotifyingHost(0.0f);
-                mSender.send(juce::OSCMessage("/delayTime", 0));
-                mSequenceResetQueued = false;
-            }
-
-            if (mSoftResetQueued)
-            {
-                mSequencePosition = 0;
-                mNoteSequencePosition = 0;
-                mSoftResetQueued = false;
-            }
-
-            if (mNewNoteReceived && isInternalMode)
-            {
-                const int diff = mSequencePosition - mLastReceivedNoteValue;
-                const int newDelayTime = (diff % 16 + 16) % 16;
-                auto* delayTimeParam = mValueTreeState.getParameter("delayTime");
-                if (delayTimeParam != nullptr) delayTimeParam->setValueNotifyingHost(static_cast<float>(newDelayTime) / 15.0f);
-                mSender.send(juce::OSCMessage("/delayTime", newDelayTime));
-            }
-
-            auto* seqPosParam = mValueTreeState.getParameter("sequencePosition");
-            if (seqPosParam != nullptr) seqPosParam->setValueNotifyingHost(static_cast<float>(mSequencePosition) / 15.0f);
-
-            auto* noteSeqPosParam = mValueTreeState.getParameter("noteSequencePosition");
-            if (noteSeqPosParam != nullptr) noteSeqPosParam->setValueNotifyingHost(static_cast<float>(mNoteSequencePosition) / 15.0f);
-            
-            mSender.send(juce::OSCMessage("/sequencePosition", mSequencePosition));
-            mSender.send(juce::OSCMessage("/noteSequencePosition", mNoteSequencePosition));
-
-            const int note1 = mNoteSequencePosition;
-            const int note2 = 32 + mSequencePosition;
-            const juce::uint8 velocity = 100;
-            const int noteDurationInSamples = 50;
-
-            processedMidi.addEvent(juce::MidiMessage::noteOn(midiOutChannel, note1, velocity), sample);
-            processedMidi.addEvent(juce::MidiMessage::noteOff(midiOutChannel, note1), sample + noteDurationInSamples);
-            processedMidi.addEvent(juce::MidiMessage::noteOn(midiOutChannel, note2, velocity), sample);
-            processedMidi.addEvent(juce::MidiMessage::noteOff(midiOutChannel, note2), sample + noteDurationInSamples);
-
-            mNewNoteReceived = false;
-
-            mSequencePosition++;
-            if (mSequencePosition > 15) mSequencePosition = 0;
-
-            mNoteSequencePosition++;
-            if (mNoteSequencePosition > 15) mNoteSequencePosition = 0;
-        }
-
-        mSamplesUntilNextEighthNote--;
+        mMidiOutputQueue.clear();
     }
-    midiMessages.swapWith(processedMidi);
 }
 
 //==============================================================================
 void AmenBreakControllerAudioProcessor::oscMessageReceived(const juce::OSCMessage& message)
 {
-    auto* modeParam = mValueTreeState.getRawParameterValue("controlMode");
-    const bool isInternalMode = modeParam->load() < 0.5f;
-    if (isInternalMode) return;
+    const juce::ScopedLock sl (mQueueLock);
+    const int midiOutChannel = (int)mValueTreeState.getRawParameterValue("midiOutputChannel")->load();
+    const juce::uint8 velocity = 100;
 
-    if (message.getAddressPattern() == "/delayTime")
+    if (message.getAddressPattern() == "/sequencePosition")
     {
         if (message.size() > 0 && message[0].isInt32())
         {
-            int newDelayTime = message[0].getInt32();
-            if (newDelayTime >= 0 && newDelayTime <= 15)
-            {
-                auto* delayTimeParam = mValueTreeState.getParameter("delayTime");
-                if (delayTimeParam != nullptr)
-                    delayTimeParam->setValueNotifyingHost(static_cast<float>(newDelayTime) / 15.0f);
-            }
+            int newPosition = message[0].getInt32();
+            mValueTreeState.getParameter("sequencePosition")->setValueNotifyingHost(static_cast<float>(newPosition) / 15.0f);
+
+            const int note = 32 + newPosition;
+            mMidiOutputQueue.addEvent(juce::MidiMessage::noteOn(midiOutChannel, note, velocity), 0);
+            mMidiOutputQueue.addEvent(juce::MidiMessage::noteOff(midiOutChannel, note), 1);
         }
     }
+    else if (message.getAddressPattern() == "/noteSequencePosition")
+    {
+        if (message.size() > 0 && message[0].isInt32())
+        {
+            int newPosition = message[0].getInt32();
+            mValueTreeState.getParameter("noteSequencePosition")->setValueNotifyingHost(static_cast<float>(newPosition) / 15.0f);
+
+            const int note = newPosition;
+            mMidiOutputQueue.addEvent(juce::MidiMessage::noteOn(midiOutChannel, note, velocity), 0);
+            mMidiOutputQueue.addEvent(juce::MidiMessage::noteOff(midiOutChannel, note), 1);
+        }
+    }
+}
+
+//==============================================================================
+void AmenBreakControllerAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
+{
+    auto state = mValueTreeState.copyState();
+    state.removeProperty("sequencePosition", nullptr);
+    state.removeProperty("noteSequencePosition", nullptr);
+    std::unique_ptr<juce::XmlElement> xml(state.createXml());
+    copyXmlToBinary(*xml, destData);
+}
+
+void AmenBreakControllerAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
+{
+    std::unique_ptr<juce::XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
+
+    if (xmlState.get() != nullptr)
+        if (xmlState->hasTagName(mValueTreeState.state.getType()))
+            mValueTreeState.replaceState(juce::ValueTree::fromXml(*xmlState));
+
+    if (auto* p = mValueTreeState.getParameter("sequencePosition"))
+        p->setValueNotifyingHost(p->getDefaultValue());
+    if (auto* p = mValueTreeState.getParameter("noteSequencePosition"))
+        p->setValueNotifyingHost(p->getDefaultValue());
 }
 
 // Other functions...
@@ -252,7 +209,5 @@ const juce::String AmenBreakControllerAudioProcessor::getName() const { return J
  void AmenBreakControllerAudioProcessor::changeProgramName (int index, const juce::String& newName) { juce::ignoreUnused(index, newName); }
  bool AmenBreakControllerAudioProcessor::hasEditor() const { return true; }
  juce::AudioProcessorEditor* AmenBreakControllerAudioProcessor::createEditor() { return new AmenBreakControllerAudioProcessorEditor (*this); }
- void AmenBreakControllerAudioProcessor::getStateInformation (juce::MemoryBlock& destData) { auto state = mValueTreeState.copyState(); std::unique_ptr<juce::XmlElement> xml (state.createXml()); copyXmlToBinary (*xml, destData); }
- void AmenBreakControllerAudioProcessor::setStateInformation (const void* data, int sizeInBytes) { std::unique_ptr<juce::XmlElement> xmlState (getXmlFromBinary (data, sizeInBytes)); if (xmlState.get() != nullptr) if (xmlState->hasTagName (mValueTreeState.state.getType())) mValueTreeState.replaceState (juce::ValueTree::fromXml (*xmlState)); }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() { return new AmenBreakControllerAudioProcessor(); }

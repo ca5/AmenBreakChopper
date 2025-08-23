@@ -15,7 +15,8 @@
 /**
 */
 class AmenBreakChopperAudioProcessor  : public juce::AudioProcessor,
-                                      private juce::OSCReceiver::Listener<juce::OSCReceiver::MessageLoopCallback>
+                                      private juce::OSCReceiver::Listener<juce::OSCReceiver::MessageLoopCallback>,
+                                      public juce::AudioProcessorValueTreeState::Listener
 {
 public:
     //==============================================================================
@@ -56,9 +57,11 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
 
     juce::AudioProcessorValueTreeState& getValueTreeState();
+    void setOscHostAddress(const juce::String& hostAddress);
 
 private:
     //==============================================================================
+    void parameterChanged(const juce::String& parameterID, float newValue) override;
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     juce::AudioProcessorValueTreeState mValueTreeState;
 
