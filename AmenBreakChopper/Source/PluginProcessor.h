@@ -67,7 +67,7 @@ private:
     double mSampleRate { 0.0 };
 
     // --- Sequencer State ---
-    double mSamplesUntilNextEighthNote { 0.0 };
+    double mNextEighthNotePpq { 0.0 };
     int mSequencePosition { 0 };
     int mNoteSequencePosition { 0 };
     int mLastReceivedNoteValue { 0 };
