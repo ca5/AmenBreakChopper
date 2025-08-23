@@ -60,6 +60,7 @@ private:
     juce::Label mOscReceivePortLabel;
     juce::Slider mOscReceivePortSlider;
 
+    juce::Label mMidiConfigLabel; // New main MIDI label
     juce::Label mMidiCcConfigLabel;
     juce::Label mMidiCcSeqResetLabel;
     juce::Slider mMidiCcSeqResetSlider;

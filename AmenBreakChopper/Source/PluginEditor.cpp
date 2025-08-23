@@ -18,15 +18,11 @@ AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor (Amen
     mDelayTimeLabel.setText("Delay Time", juce::dontSendNotification);
     mSequencePositionLabel.setText("Sequence Position", juce::dontSendNotification);
     mNoteSequencePositionLabel.setText("Note Sequence Position", juce::dontSendNotification);
-    mMidiInputChannelLabel.setText("MIDI In Channel", juce::dontSendNotification);
-    mMidiOutputChannelLabel.setText("MIDI Out Channel", juce::dontSendNotification);
 
     addAndMakeVisible(mControlModeLabel);
     addAndMakeVisible(mDelayTimeLabel);
     addAndMakeVisible(mSequencePositionLabel);
     addAndMakeVisible(mNoteSequencePositionLabel);
-    addAndMakeVisible(mMidiInputChannelLabel);
-    addAndMakeVisible(mMidiOutputChannelLabel);
 
     // Controls
     addAndMakeVisible(mControlModeComboBox);
@@ -46,50 +42,29 @@ AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor (Amen
     mNoteSequencePositionSlider.setInterceptsMouseClicks(false, false);
     addAndMakeVisible(mNoteSequencePositionSlider);
 
-    mMidiInputChannelSlider.setSliderStyle(juce::Slider::SliderStyle::IncDecButtons);
-    mMidiInputChannelSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, true, 50, 25);
-    addAndMakeVisible(mMidiInputChannelSlider);
-
-    mMidiOutputChannelSlider.setSliderStyle(juce::Slider::SliderStyle::IncDecButtons);
-    mMidiOutputChannelSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, true, 50, 25);
-    addAndMakeVisible(mMidiOutputChannelSlider);
-
     // Attachments
     mControlModeAttachment.reset(new juce::AudioProcessorValueTreeState::ComboBoxAttachment(audioProcessor.getValueTreeState(), "controlMode", mControlModeComboBox));
     mDelayTimeAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "delayTime", mDelayTimeSlider));
     mSequencePositionAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "sequencePosition", mSequencePositionSlider));
     mNoteSequencePositionAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "noteSequencePosition", mNoteSequencePositionSlider));
-    mMidiInputChannelAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "midiInputChannel", mMidiInputChannelSlider));
-    mMidiOutputChannelAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "midiOutputChannel", mMidiOutputChannelSlider));
 
-    // --- New OSC and MIDI CC UI ---
+    // --- MIDI Configuration ---
+    mMidiConfigLabel.setText("MIDI Configuration", juce::dontSendNotification);
+    mMidiConfigLabel.setFont(juce::Font(16.0f, juce::Font::bold));
+    addAndMakeVisible(mMidiConfigLabel);
 
-    // OSC Labels
-    mOscConfigLabel.setText("OSC Configuration", juce::dontSendNotification);
-    mOscConfigLabel.setFont(juce::Font(16.0f, juce::Font::bold));
-    addAndMakeVisible(mOscConfigLabel);
-    mOscHostAddressLabel.setText("Host IP Address", juce::dontSendNotification);
-    addAndMakeVisible(mOscHostAddressLabel);
-    mOscSendPortLabel.setText("Send Port", juce::dontSendNotification);
-    addAndMakeVisible(mOscSendPortLabel);
-    mOscReceivePortLabel.setText("Receive Port", juce::dontSendNotification);
-    addAndMakeVisible(mOscReceivePortLabel);
+    mMidiInputChannelLabel.setText("MIDI In Channel", juce::dontSendNotification);
+    addAndMakeVisible(mMidiInputChannelLabel);
+    mMidiOutputChannelLabel.setText("MIDI Out Channel", juce::dontSendNotification);
+    addAndMakeVisible(mMidiOutputChannelLabel);
 
-    // OSC Controls
-    mOscHostAddressEditor.setText(audioProcessor.getValueTreeState().state.getProperty("oscHostAddress").toString());
-    mOscHostAddressEditor.addListener(this);
-    addAndMakeVisible(mOscHostAddressEditor);
-    mOscSendPortSlider.setSliderStyle(juce::Slider::SliderStyle::IncDecButtons);
-    mOscSendPortSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, true, 70, 25);
-    addAndMakeVisible(mOscSendPortSlider);
-    mOscReceivePortSlider.setSliderStyle(juce::Slider::SliderStyle::IncDecButtons);
-    mOscReceivePortSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, true, 70, 25);
-    addAndMakeVisible(mOscReceivePortSlider);
+    mMidiInputChannelSlider.setSliderStyle(juce::Slider::SliderStyle::IncDecButtons);
+    mMidiInputChannelSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, true, 50, 25);
+    addAndMakeVisible(mMidiInputChannelSlider);
+    mMidiOutputChannelSlider.setSliderStyle(juce::Slider::SliderStyle::IncDecButtons);
+    mMidiOutputChannelSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, true, 50, 25);
+    addAndMakeVisible(mMidiOutputChannelSlider);
 
-    // MIDI CC Labels
-    mMidiCcConfigLabel.setText("MIDI CC Configuration", juce::dontSendNotification);
-    mMidiCcConfigLabel.setFont(juce::Font(16.0f, juce::Font::bold));
-    addAndMakeVisible(mMidiCcConfigLabel);
     mMidiCcSeqResetLabel.setText("Sequence Reset CC", juce::dontSendNotification);
     addAndMakeVisible(mMidiCcSeqResetLabel);
     mMidiCcTimerResetLabel.setText("Timer Reset CC", juce::dontSendNotification);
@@ -97,7 +72,6 @@ AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor (Amen
     mMidiCcSoftResetLabel.setText("Soft Reset CC", juce::dontSendNotification);
     addAndMakeVisible(mMidiCcSoftResetLabel);
 
-    // MIDI CC Controls
     mMidiCcSeqResetSlider.setSliderStyle(juce::Slider::SliderStyle::IncDecButtons);
     mMidiCcSeqResetSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, true, 50, 25);
     addAndMakeVisible(mMidiCcSeqResetSlider);
@@ -108,12 +82,35 @@ AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor (Amen
     mMidiCcSoftResetSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, true, 50, 25);
     addAndMakeVisible(mMidiCcSoftResetSlider);
 
-    // New Attachments
-    mOscSendPortAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "oscSendPort", mOscSendPortSlider));
-    mOscReceivePortAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "oscReceivePort", mOscReceivePortSlider));
+    mMidiInputChannelAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "midiInputChannel", mMidiInputChannelSlider));
+    mMidiOutputChannelAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "midiOutputChannel", mMidiOutputChannelSlider));
     mMidiCcSeqResetAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "midiCcSeqReset", mMidiCcSeqResetSlider));
     mMidiCcTimerResetAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "midiCcTimerReset", mMidiCcTimerResetSlider));
     mMidiCcSoftResetAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "midiCcSoftReset", mMidiCcSoftResetSlider));
+
+    // --- OSC Configuration ---
+    mOscConfigLabel.setText("OSC Configuration", juce::dontSendNotification);
+    mOscConfigLabel.setFont(juce::Font(16.0f, juce::Font::bold));
+    addAndMakeVisible(mOscConfigLabel);
+    mOscHostAddressLabel.setText("Host IP Address", juce::dontSendNotification);
+    addAndMakeVisible(mOscHostAddressLabel);
+    mOscSendPortLabel.setText("Send Port", juce::dontSendNotification);
+    addAndMakeVisible(mOscSendPortLabel);
+    mOscReceivePortLabel.setText("Receive Port", juce::dontSendNotification);
+    addAndMakeVisible(mOscReceivePortLabel);
+
+    mOscHostAddressEditor.setText(audioProcessor.getValueTreeState().state.getProperty("oscHostAddress").toString());
+    mOscHostAddressEditor.addListener(this);
+    addAndMakeVisible(mOscHostAddressEditor);
+    mOscSendPortSlider.setSliderStyle(juce::Slider::SliderStyle::IncDecButtons);
+    mOscSendPortSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, true, 70, 25);
+    addAndMakeVisible(mOscSendPortSlider);
+    mOscReceivePortSlider.setSliderStyle(juce::Slider::SliderStyle::IncDecButtons);
+    mOscReceivePortSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, true, 70, 25);
+    addAndMakeVisible(mOscReceivePortSlider);
+
+    mOscSendPortAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "oscSendPort", mOscSendPortSlider));
+    mOscReceivePortAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "oscReceivePort", mOscReceivePortSlider));
 
     // Add listener for controlMode
     audioProcessor.getValueTreeState().addParameterListener("controlMode", this);
@@ -159,12 +156,28 @@ void AmenBreakChopperAudioProcessorEditor::resized()
     mNoteSequencePositionSlider.setBounds(10, y + rowHeight - 15, getWidth() - 20, sliderHeight);
     y += sliderHeight + 10;
 
+    // --- MIDI Configuration ---
+    mMidiConfigLabel.setBounds(10, y, getWidth() - 20, rowHeight);
+    y += rowHeight + 5;
+
     mMidiInputChannelLabel.setBounds(10, y, labelWidth, rowHeight);
     mMidiInputChannelSlider.setBounds(10 + labelWidth, y, 100, rowHeight);
     y += rowHeight + 5;
 
     mMidiOutputChannelLabel.setBounds(10, y, labelWidth, rowHeight);
     mMidiOutputChannelSlider.setBounds(10 + labelWidth, y, 100, rowHeight);
+    y += rowHeight + 5;
+
+    mMidiCcSeqResetLabel.setBounds(10, y, labelWidth, rowHeight);
+    mMidiCcSeqResetSlider.setBounds(10 + labelWidth, y, 100, rowHeight);
+    y += rowHeight + 5;
+
+    mMidiCcTimerResetLabel.setBounds(10, y, labelWidth, rowHeight);
+    mMidiCcTimerResetSlider.setBounds(10 + labelWidth, y, 100, rowHeight);
+    y += rowHeight + 5;
+
+    mMidiCcSoftResetLabel.setBounds(10, y, labelWidth, rowHeight);
+    mMidiCcSoftResetSlider.setBounds(10 + labelWidth, y, 100, rowHeight);
     y += rowHeight + 15;
 
     // --- OSC Configuration ---
@@ -181,22 +194,6 @@ void AmenBreakChopperAudioProcessorEditor::resized()
 
     mOscReceivePortLabel.setBounds(10, y, labelWidth, rowHeight);
     mOscReceivePortSlider.setBounds(10 + labelWidth, y, 120, rowHeight);
-    y += rowHeight + 15;
-
-    // --- MIDI CC Configuration ---
-    mMidiCcConfigLabel.setBounds(10, y, getWidth() - 20, rowHeight);
-    y += rowHeight + 5;
-
-    mMidiCcSeqResetLabel.setBounds(10, y, labelWidth, rowHeight);
-    mMidiCcSeqResetSlider.setBounds(10 + labelWidth, y, 100, rowHeight);
-    y += rowHeight + 5;
-
-    mMidiCcTimerResetLabel.setBounds(10, y, labelWidth, rowHeight);
-    mMidiCcTimerResetSlider.setBounds(10 + labelWidth, y, 100, rowHeight);
-    y += rowHeight + 5;
-
-    mMidiCcSoftResetLabel.setBounds(10, y, labelWidth, rowHeight);
-    mMidiCcSoftResetSlider.setBounds(10 + labelWidth, y, 100, rowHeight);
 }
 
 void AmenBreakChopperAudioProcessorEditor::textEditorTextChanged(juce::TextEditor& editor)
@@ -219,6 +216,20 @@ void AmenBreakChopperAudioProcessorEditor::updateControlEnablement()
 {
     auto* controlModeParam = audioProcessor.getValueTreeState().getRawParameterValue("controlMode");
     const bool isOscMode = controlModeParam->load() > 0.5f; // 0 is Internal, 1 is OSC
+    const bool isInternalMode = !isOscMode;
+
+    // MIDI controls are enabled in Internal mode
+    mMidiConfigLabel.setEnabled(isInternalMode);
+    mMidiInputChannelLabel.setEnabled(isInternalMode);
+    mMidiInputChannelSlider.setEnabled(isInternalMode);
+    mMidiOutputChannelLabel.setEnabled(isInternalMode);
+    mMidiOutputChannelSlider.setEnabled(isInternalMode);
+    mMidiCcSeqResetLabel.setEnabled(isInternalMode);
+    mMidiCcSeqResetSlider.setEnabled(isInternalMode);
+    mMidiCcTimerResetLabel.setEnabled(isInternalMode);
+    mMidiCcTimerResetSlider.setEnabled(isInternalMode);
+    mMidiCcSoftResetLabel.setEnabled(isInternalMode);
+    mMidiCcSoftResetSlider.setEnabled(isInternalMode);
 
     // OSC controls are enabled in OSC mode
     mOscConfigLabel.setEnabled(isOscMode);
@@ -228,19 +239,4 @@ void AmenBreakChopperAudioProcessorEditor::updateControlEnablement()
     mOscSendPortSlider.setEnabled(isOscMode);
     mOscReceivePortLabel.setEnabled(isOscMode);
     mOscReceivePortSlider.setEnabled(isOscMode);
-
-    // MIDI controls are enabled in Internal mode (i.e., NOT OSC mode)
-    const bool isInternalMode = !isOscMode;
-    mMidiInputChannelLabel.setEnabled(isInternalMode);
-    mMidiInputChannelSlider.setEnabled(isInternalMode);
-    mMidiOutputChannelLabel.setEnabled(isInternalMode);
-    mMidiOutputChannelSlider.setEnabled(isInternalMode);
-
-    mMidiCcConfigLabel.setEnabled(isInternalMode);
-    mMidiCcSeqResetLabel.setEnabled(isInternalMode);
-    mMidiCcSeqResetSlider.setEnabled(isInternalMode);
-    mMidiCcTimerResetLabel.setEnabled(isInternalMode);
-    mMidiCcTimerResetSlider.setEnabled(isInternalMode);
-    mMidiCcSoftResetLabel.setEnabled(isInternalMode);
-    mMidiCcSoftResetSlider.setEnabled(isInternalMode);
 }
