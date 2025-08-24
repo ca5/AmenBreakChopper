@@ -85,11 +85,30 @@ AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor (Amen
     mMidiCcSoftResetSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, true, 50, 25);
     addAndMakeVisible(mMidiCcSoftResetSlider);
 
+    mMidiCcSeqResetModeLabel.setText("Seq Reset Mode", juce::dontSendNotification);
+    addAndMakeVisible(mMidiCcSeqResetModeLabel);
+    addAndMakeVisible(mMidiCcSeqResetModeComboBox);
+    mMidiCcSeqResetModeComboBox.addItemList(audioProcessor.getValueTreeState().getParameter("midiCcSeqResetMode")->getAllValueStrings(), 1);
+
+    mMidiCcTimerResetModeLabel.setText("Timer Reset Mode", juce::dontSendNotification);
+    addAndMakeVisible(mMidiCcTimerResetModeLabel);
+    addAndMakeVisible(mMidiCcTimerResetModeComboBox);
+    mMidiCcTimerResetModeComboBox.addItemList(audioProcessor.getValueTreeState().getParameter("midiCcTimerResetMode")->getAllValueStrings(), 1);
+
+    mMidiCcSoftResetModeLabel.setText("Soft Reset Mode", juce::dontSendNotification);
+    addAndMakeVisible(mMidiCcSoftResetModeLabel);
+    addAndMakeVisible(mMidiCcSoftResetModeComboBox);
+    mMidiCcSoftResetModeComboBox.addItemList(audioProcessor.getValueTreeState().getParameter("midiCcSoftResetMode")->getAllValueStrings(), 1);
+
     mMidiInputChannelAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "midiInputChannel", mMidiInputChannelSlider));
     mMidiOutputChannelAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "midiOutputChannel", mMidiOutputChannelSlider));
     mMidiCcSeqResetAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "midiCcSeqReset", mMidiCcSeqResetSlider));
     mMidiCcTimerResetAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "midiCcTimerReset", mMidiCcTimerResetSlider));
     mMidiCcSoftResetAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "midiCcSoftReset", mMidiCcSoftResetSlider));
+    mMidiCcSeqResetModeAttachment.reset(new juce::AudioProcessorValueTreeState::ComboBoxAttachment(audioProcessor.getValueTreeState(), "midiCcSeqResetMode", mMidiCcSeqResetModeComboBox));
+    mMidiCcTimerResetModeAttachment.reset(new juce::AudioProcessorValueTreeState::ComboBoxAttachment(audioProcessor.getValueTreeState(), "midiCcTimerResetMode", mMidiCcTimerResetModeComboBox));
+    mMidiCcSoftResetModeAttachment.reset(new juce::AudioProcessorValueTreeState::ComboBoxAttachment(audioProcessor.getValueTreeState(), "midiCcSoftResetMode", mMidiCcSoftResetModeComboBox));
+
 
     // === OSC Configuration ===
     mOscConfigLabel.setText("OSC Configuration", juce::dontSendNotification);
@@ -172,12 +191,15 @@ void AmenBreakChopperAudioProcessorEditor::resized()
     y += rowHeight + 5;
     mMidiCcSeqResetLabel.setBounds(10, y, labelWidth, rowHeight);
     mMidiCcSeqResetSlider.setBounds(10 + labelWidth, y, 100, rowHeight);
+    mMidiCcSeqResetModeComboBox.setBounds(10 + labelWidth + 105, y, controlWidth - 105, rowHeight);
     y += rowHeight + 5;
     mMidiCcTimerResetLabel.setBounds(10, y, labelWidth, rowHeight);
     mMidiCcTimerResetSlider.setBounds(10 + labelWidth, y, 100, rowHeight);
+    mMidiCcTimerResetModeComboBox.setBounds(10 + labelWidth + 105, y, controlWidth - 105, rowHeight);
     y += rowHeight + 5;
     mMidiCcSoftResetLabel.setBounds(10, y, labelWidth, rowHeight);
     mMidiCcSoftResetSlider.setBounds(10 + labelWidth, y, 100, rowHeight);
+    mMidiCcSoftResetModeComboBox.setBounds(10 + labelWidth + 105, y, controlWidth - 105, rowHeight);
     y += rowHeight + 15;
 
     // === OSC Configuration ===
@@ -227,6 +249,10 @@ void AmenBreakChopperAudioProcessorEditor::updateControlEnablement()
     mMidiCcTimerResetSlider.setEnabled(isInternalMode);
     mMidiCcSoftResetLabel.setEnabled(isInternalMode);
     mMidiCcSoftResetSlider.setEnabled(isInternalMode);
+
+    mMidiCcSeqResetModeComboBox.setEnabled(isInternalMode);
+    mMidiCcTimerResetModeComboBox.setEnabled(isInternalMode);
+    mMidiCcSoftResetModeComboBox.setEnabled(isInternalMode);
 
     // OSC controls are enabled in OSC mode
     mOscConfigLabel.setEnabled(isOscMode);
