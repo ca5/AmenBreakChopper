@@ -79,11 +79,18 @@ private:
     bool mNewNoteReceived { false };
     bool mSoftResetQueued { false };
 
+    // --- CC Value State ---
+    int mLastSeqResetCcValue { 0 };
+    int mLastTimerResetCcValue { 0 };
+    int mLastSoftResetCcValue { 0 };
+
     // --- OSC State ---
     juce::OSCSender mSender;
     juce::OSCReceiver mReceiver;
 
     void oscMessageReceived (const juce::OSCMessage& message) override;
+
+    bool shouldTriggerReset(int mode, int previousValue, int currentValue);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AmenBreakChopperAudioProcessor)
 };
