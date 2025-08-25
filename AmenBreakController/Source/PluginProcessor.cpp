@@ -36,6 +36,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout AmenBreakControllerAudioProc
     layout.add(std::make_unique<juce::AudioParameterInt>("oscSendPort", "OSC Send Port", 1, 65535, 9002));
     layout.add(std::make_unique<juce::AudioParameterInt>("oscReceivePort", "OSC Receive Port", 1, 65535, 9001));
 
+    juce::StringArray resetModes = { "Any", "Gate-On", "Gate-Off" };
+    layout.add(std::make_unique<juce::AudioParameterChoice>("oscSeqResetMode", "OSC Seq Reset Mode", resetModes, 0));
+    layout.add(std::make_unique<juce::AudioParameterChoice>("oscTimerResetMode", "OSC Timer Reset Mode", resetModes, 0));
+    layout.add(std::make_unique<juce::AudioParameterChoice>("oscSoftResetMode", "OSC Soft Reset Mode", resetModes, 0));
+
     return layout;
 }
 

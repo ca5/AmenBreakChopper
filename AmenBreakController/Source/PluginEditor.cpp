@@ -80,14 +80,17 @@ AmenBreakControllerAudioProcessorEditor::AmenBreakControllerAudioProcessorEditor
     addAndMakeVisible(mOscTriggerLabel);
 
     mSequenceResetButton.setButtonText("Sequence Reset");
+    mSequenceResetButton.setClickingTogglesState(true);
     mSequenceResetButton.addListener(this);
     addAndMakeVisible(mSequenceResetButton);
 
     mTimerResetButton.setButtonText("Timer Reset");
+    mTimerResetButton.setClickingTogglesState(true);
     mTimerResetButton.addListener(this);
     addAndMakeVisible(mTimerResetButton);
 
     mSoftResetButton.setButtonText("Soft Reset");
+    mSoftResetButton.setClickingTogglesState(true);
     mSoftResetButton.addListener(this);
     addAndMakeVisible(mSoftResetButton);
 
@@ -98,6 +101,20 @@ AmenBreakControllerAudioProcessorEditor::AmenBreakControllerAudioProcessorEditor
     mMidiOutputChannelAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "midiOutputChannel", mMidiOutputChannelSlider));
     mOscSendPortAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "oscSendPort", mOscSendPortSlider));
     mOscReceivePortAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "oscReceivePort", mOscReceivePortSlider));
+
+    auto& vts = audioProcessor.getValueTreeState();
+    mSequenceResetModeComboBox.addItemList(vts.getParameter("oscSeqResetMode")->getAllValueStrings(), 1);
+    addAndMakeVisible(mSequenceResetModeComboBox);
+    mSequenceResetModeAttachment.reset(new juce::AudioProcessorValueTreeState::ComboBoxAttachment(vts, "oscSeqResetMode", mSequenceResetModeComboBox));
+
+    mTimerResetModeComboBox.addItemList(vts.getParameter("oscTimerResetMode")->getAllValueStrings(), 1);
+    addAndMakeVisible(mTimerResetModeComboBox);
+    mTimerResetModeAttachment.reset(new juce::AudioProcessorValueTreeState::ComboBoxAttachment(vts, "oscTimerResetMode", mTimerResetModeComboBox));
+
+    mSoftResetModeComboBox.addItemList(vts.getParameter("oscSoftResetMode")->getAllValueStrings(), 1);
+    addAndMakeVisible(mSoftResetModeComboBox);
+    mSoftResetModeAttachment.reset(new juce::AudioProcessorValueTreeState::ComboBoxAttachment(vts, "oscSoftResetMode", mSoftResetModeComboBox));
+
 
     setSize (400, 550);
 }
@@ -159,21 +176,61 @@ void AmenBreakControllerAudioProcessorEditor::resized()
     mSequenceResetButton.setBounds(10, y, 120, rowHeight);
     mTimerResetButton.setBounds(140, y, 120, rowHeight);
     mSoftResetButton.setBounds(270, y, 120, rowHeight);
+    y += rowHeight + 5;
+    mSequenceResetModeComboBox.setBounds(10, y, 120, rowHeight);
+    mTimerResetModeComboBox.setBounds(140, y, 120, rowHeight);
+    mSoftResetModeComboBox.setBounds(270, y, 120, rowHeight);
 }
 
 void AmenBreakControllerAudioProcessorEditor::buttonClicked(juce::Button* button)
 {
+    auto& vts = audioProcessor.getValueTreeState();
+    const bool isButtonOn = button->getToggleState();
+
+    juce::String address;
+    juce::String modeParamID;
+
     if (button == &mSequenceResetButton)
     {
-        audioProcessor.sendOscMessage(juce::OSCMessage("/sequenceReset"));
+        address = "/sequenceReset";
+        modeParamID = "oscSeqResetMode";
     }
     else if (button == &mTimerResetButton)
     {
-        audioProcessor.sendOscMessage(juce::OSCMessage("/timerReset"));
+        address = "/timerReset";
+        modeParamID = "oscTimerResetMode";
     }
     else if (button == &mSoftResetButton)
     {
-        audioProcessor.sendOscMessage(juce::OSCMessage("/softReset"));
+        address = "/softReset";
+        modeParamID = "oscSoftResetMode";
+    }
+    else
+    {
+        return; // Not one of our reset buttons
+    }
+
+    const int mode = (int)vts.getRawParameterValue(modeParamID)->load();
+    bool shouldSend = false;
+
+    switch (mode)
+    {
+        case 0: // Any
+            shouldSend = isButtonOn; // Send only when toggled on, to prevent double sends
+            break;
+        case 1: // Gate-On
+            shouldSend = isButtonOn;
+            break;
+        case 2: // Gate-Off
+            shouldSend = !isButtonOn;
+            break;
+        default:
+            break;
+    }
+
+    if (shouldSend)
+    {
+        audioProcessor.sendOscMessage(juce::OSCMessage(address));
     }
 }
 

@@ -67,5 +67,15 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mOscSendPortAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mOscReceivePortAttachment;
 
+    // OSC Trigger Modes
+    juce::ComboBox mSequenceResetModeComboBox;
+    juce::ComboBox mTimerResetModeComboBox;
+    juce::ComboBox mSoftResetModeComboBox;
+
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> mSequenceResetModeAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> mTimerResetModeAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> mSoftResetModeAttachment;
+
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AmenBreakControllerAudioProcessorEditor)
 };
