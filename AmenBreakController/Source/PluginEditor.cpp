@@ -216,7 +216,7 @@ void AmenBreakControllerAudioProcessorEditor::buttonClicked(juce::Button* button
     switch (mode)
     {
         case 0: // Any
-            shouldSend = isButtonOn; // Send only when toggled on, to prevent double sends
+            shouldSend = true; // Send on any click (toggle on or off)
             break;
         case 1: // Gate-On
             shouldSend = isButtonOn;
