@@ -50,6 +50,29 @@ AmenBreakControllerAudioProcessorEditor::AmenBreakControllerAudioProcessorEditor
     mMidiOutputChannelSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, true, 50, 25);
     addAndMakeVisible(mMidiOutputChannelSlider);
 
+    // MIDI CC Config
+    mMidiCcSeqResetLabel.setText("Sequence Reset CC", juce::dontSendNotification);
+    addAndMakeVisible(mMidiCcSeqResetLabel);
+    mMidiCcTimerResetLabel.setText("Timer Reset CC", juce::dontSendNotification);
+    addAndMakeVisible(mMidiCcTimerResetLabel);
+    mMidiCcSoftResetLabel.setText("Soft Reset CC", juce::dontSendNotification);
+    addAndMakeVisible(mMidiCcSoftResetLabel);
+
+    mMidiCcSeqResetSlider.setSliderStyle(juce::Slider::SliderStyle::IncDecButtons);
+    mMidiCcSeqResetSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, true, 50, 25);
+    addAndMakeVisible(mMidiCcSeqResetSlider);
+    addAndMakeVisible(mMidiCcSeqResetModeComboBox);
+
+    mMidiCcTimerResetSlider.setSliderStyle(juce::Slider::SliderStyle::IncDecButtons);
+    mMidiCcTimerResetSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, true, 50, 25);
+    addAndMakeVisible(mMidiCcTimerResetSlider);
+    addAndMakeVisible(mMidiCcTimerResetModeComboBox);
+
+    mMidiCcSoftResetSlider.setSliderStyle(juce::Slider::SliderStyle::IncDecButtons);
+    mMidiCcSoftResetSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, true, 50, 25);
+    addAndMakeVisible(mMidiCcSoftResetSlider);
+    addAndMakeVisible(mMidiCcSoftResetModeComboBox);
+
     // === OSC Configuration ===
     mOscConfigLabel.setText("OSC Configuration", juce::dontSendNotification);
     mOscConfigLabel.setFont(juce::Font(16.0f, juce::Font::bold));
@@ -80,17 +103,14 @@ AmenBreakControllerAudioProcessorEditor::AmenBreakControllerAudioProcessorEditor
     addAndMakeVisible(mOscTriggerLabel);
 
     mSequenceResetButton.setButtonText("Sequence Reset");
-    mSequenceResetButton.setClickingTogglesState(true);
     mSequenceResetButton.addListener(this);
     addAndMakeVisible(mSequenceResetButton);
 
     mTimerResetButton.setButtonText("Timer Reset");
-    mTimerResetButton.setClickingTogglesState(true);
     mTimerResetButton.addListener(this);
     addAndMakeVisible(mTimerResetButton);
 
     mSoftResetButton.setButtonText("Soft Reset");
-    mSoftResetButton.setClickingTogglesState(true);
     mSoftResetButton.addListener(this);
     addAndMakeVisible(mSoftResetButton);
 
@@ -103,18 +123,16 @@ AmenBreakControllerAudioProcessorEditor::AmenBreakControllerAudioProcessorEditor
     mOscReceivePortAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "oscReceivePort", mOscReceivePortSlider));
 
     auto& vts = audioProcessor.getValueTreeState();
-    mSequenceResetModeComboBox.addItemList(vts.getParameter("oscSeqResetMode")->getAllValueStrings(), 1);
-    addAndMakeVisible(mSequenceResetModeComboBox);
-    mSequenceResetModeAttachment.reset(new juce::AudioProcessorValueTreeState::ComboBoxAttachment(vts, "oscSeqResetMode", mSequenceResetModeComboBox));
+    mMidiCcSeqResetModeComboBox.addItemList(vts.getParameter("midiCcSeqResetMode")->getAllValueStrings(), 1);
+    mMidiCcTimerResetModeComboBox.addItemList(vts.getParameter("midiCcTimerResetMode")->getAllValueStrings(), 1);
+    mMidiCcSoftResetModeComboBox.addItemList(vts.getParameter("midiCcSoftResetMode")->getAllValueStrings(), 1);
 
-    mTimerResetModeComboBox.addItemList(vts.getParameter("oscTimerResetMode")->getAllValueStrings(), 1);
-    addAndMakeVisible(mTimerResetModeComboBox);
-    mTimerResetModeAttachment.reset(new juce::AudioProcessorValueTreeState::ComboBoxAttachment(vts, "oscTimerResetMode", mTimerResetModeComboBox));
-
-    mSoftResetModeComboBox.addItemList(vts.getParameter("oscSoftResetMode")->getAllValueStrings(), 1);
-    addAndMakeVisible(mSoftResetModeComboBox);
-    mSoftResetModeAttachment.reset(new juce::AudioProcessorValueTreeState::ComboBoxAttachment(vts, "oscSoftResetMode", mSoftResetModeComboBox));
-
+    mMidiCcSeqResetAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(vts, "midiCcSeqReset", mMidiCcSeqResetSlider));
+    mMidiCcSeqResetModeAttachment.reset(new juce::AudioProcessorValueTreeState::ComboBoxAttachment(vts, "midiCcSeqResetMode", mMidiCcSeqResetModeComboBox));
+    mMidiCcTimerResetAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(vts, "midiCcTimerReset", mMidiCcTimerResetSlider));
+    mMidiCcTimerResetModeAttachment.reset(new juce::AudioProcessorValueTreeState::ComboBoxAttachment(vts, "midiCcTimerResetMode", mMidiCcTimerResetModeComboBox));
+    mMidiCcSoftResetAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(vts, "midiCcSoftReset", mMidiCcSoftResetSlider));
+    mMidiCcSoftResetModeAttachment.reset(new juce::AudioProcessorValueTreeState::ComboBoxAttachment(vts, "midiCcSoftResetMode", mMidiCcSoftResetModeComboBox));
 
     setSize (400, 550);
 }
@@ -155,6 +173,21 @@ void AmenBreakControllerAudioProcessorEditor::resized()
     y += rowHeight + 5;
     mMidiOutputChannelLabel.setBounds(10, y, labelWidth, rowHeight);
     mMidiOutputChannelSlider.setBounds(10 + labelWidth, y, 100, rowHeight);
+    y += rowHeight + 5;
+
+    mMidiCcSeqResetLabel.setBounds(10, y, labelWidth, rowHeight);
+    mMidiCcSeqResetSlider.setBounds(10 + labelWidth, y, 100, rowHeight);
+    mMidiCcSeqResetModeComboBox.setBounds(10 + labelWidth + 105, y, controlWidth - 105, rowHeight);
+    y += rowHeight + 5;
+
+    mMidiCcTimerResetLabel.setBounds(10, y, labelWidth, rowHeight);
+    mMidiCcTimerResetSlider.setBounds(10 + labelWidth, y, 100, rowHeight);
+    mMidiCcTimerResetModeComboBox.setBounds(10 + labelWidth + 105, y, controlWidth - 105, rowHeight);
+    y += rowHeight + 5;
+
+    mMidiCcSoftResetLabel.setBounds(10, y, labelWidth, rowHeight);
+    mMidiCcSoftResetSlider.setBounds(10 + labelWidth, y, 100, rowHeight);
+    mMidiCcSoftResetModeComboBox.setBounds(10 + labelWidth + 105, y, controlWidth - 105, rowHeight);
     y += rowHeight + 15;
 
     // === OSC Configuration ===
@@ -176,61 +209,21 @@ void AmenBreakControllerAudioProcessorEditor::resized()
     mSequenceResetButton.setBounds(10, y, 120, rowHeight);
     mTimerResetButton.setBounds(140, y, 120, rowHeight);
     mSoftResetButton.setBounds(270, y, 120, rowHeight);
-    y += rowHeight + 5;
-    mSequenceResetModeComboBox.setBounds(10, y, 120, rowHeight);
-    mTimerResetModeComboBox.setBounds(140, y, 120, rowHeight);
-    mSoftResetModeComboBox.setBounds(270, y, 120, rowHeight);
 }
 
 void AmenBreakControllerAudioProcessorEditor::buttonClicked(juce::Button* button)
 {
-    auto& vts = audioProcessor.getValueTreeState();
-    const bool isButtonOn = button->getToggleState();
-
-    juce::String address;
-    juce::String modeParamID;
-
     if (button == &mSequenceResetButton)
     {
-        address = "/sequenceReset";
-        modeParamID = "oscSeqResetMode";
+        audioProcessor.sendOscMessage(juce::OSCMessage("/sequenceReset"));
     }
     else if (button == &mTimerResetButton)
     {
-        address = "/timerReset";
-        modeParamID = "oscTimerResetMode";
+        audioProcessor.sendOscMessage(juce::OSCMessage("/timerReset"));
     }
     else if (button == &mSoftResetButton)
     {
-        address = "/softReset";
-        modeParamID = "oscSoftResetMode";
-    }
-    else
-    {
-        return; // Not one of our reset buttons
-    }
-
-    const int mode = (int)vts.getRawParameterValue(modeParamID)->load();
-    bool shouldSend = false;
-
-    switch (mode)
-    {
-        case 0: // Any
-            shouldSend = true; // Send on any click (toggle on or off)
-            break;
-        case 1: // Gate-On
-            shouldSend = isButtonOn;
-            break;
-        case 2: // Gate-Off
-            shouldSend = !isButtonOn;
-            break;
-        default:
-            break;
-    }
-
-    if (shouldSend)
-    {
-        audioProcessor.sendOscMessage(juce::OSCMessage(address));
+        audioProcessor.sendOscMessage(juce::OSCMessage("/softReset"));
     }
 }
 
