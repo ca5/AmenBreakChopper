@@ -103,7 +103,6 @@ bool AmenBreakControllerAudioProcessor::shouldTriggerReset(int mode, int previou
 
 void AmenBreakControllerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    mSampleRate = sampleRate;
     mLastSeqResetCcValue = 0;
     mLastTimerResetCcValue = 0;
     mLastSoftResetCcValue = 0;
@@ -120,6 +119,13 @@ void AmenBreakControllerAudioProcessor::prepareToPlay (double sampleRate, int sa
 
 void AmenBreakControllerAudioProcessor::releaseResources()
 {
+    // When playback stops, turn off any hanging notes.
+    const juce::ScopedLock sl (mQueueLock);
+    const int midiOutChannel = (int)mValueTreeState.getRawParameterValue("midiOutputChannel")->load();
+    if (mLastOscNoteSeq >= 0)
+        mMidiOutputQueue.addEvent(juce::MidiMessage::noteOff(midiOutChannel, 32 + mLastOscNoteSeq), 0);
+    if (mLastOscNoteNoteSeq >= 0)
+        mMidiOutputQueue.addEvent(juce::MidiMessage::noteOff(midiOutChannel, mLastOscNoteNoteSeq), 0);
 }
 
 bool AmenBreakControllerAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -131,17 +137,6 @@ void AmenBreakControllerAudioProcessor::processBlock (juce::AudioBuffer<float>& 
 {
     buffer.clear();
     const int midiInChannel = (int)mValueTreeState.getRawParameterValue("midiInputChannel")->load();
-
-    // --- Get transport state from host ---
-    double bpm = 120.0;
-    if (auto* playHead = getPlayHead())
-    {
-        if (auto positionInfo = playHead->getPosition())
-        {
-            bpm = positionInfo->getBpm().orFallback(120.0);
-        }
-    }
-    const int eighthNoteDurationInSamples = static_cast<int>(((60.0 / bpm) * 0.5) * mSampleRate);
 
     // --- Handle MIDI In -> OSC Out ---
     for (const auto metadata : midiMessages)
@@ -200,10 +195,8 @@ void AmenBreakControllerAudioProcessor::processBlock (juce::AudioBuffer<float>& 
     {
         for (const auto& metadata : mMidiOutputQueue)
         {
-            auto msg = metadata.getMessage();
-            // Note-ons at the start of the buffer, note-offs after a short duration
-            int samplePos = msg.isNoteOff() ? eighthNoteDurationInSamples : 0;
-            midiMessages.addEvent(msg, samplePos);
+            // Add all queued messages at the start of the buffer.
+            midiMessages.addEvent(metadata.getMessage(), 0);
         }
         mMidiOutputQueue.clear();
     }
@@ -223,9 +216,16 @@ void AmenBreakControllerAudioProcessor::oscMessageReceived(const juce::OSCMessag
             int newPosition = message[0].getInt32();
             mValueTreeState.getParameter("sequencePosition")->setValueNotifyingHost(static_cast<float>(newPosition) / 15.0f);
 
+            // Turn off the last note from this sequence
+            if (mLastOscNoteSeq >= 0)
+                mMidiOutputQueue.addEvent(juce::MidiMessage::noteOff(midiOutChannel, 32 + mLastOscNoteSeq), 0);
+
+            // Turn on the new note
             const int note = 32 + newPosition;
             mMidiOutputQueue.addEvent(juce::MidiMessage::noteOn(midiOutChannel, note, velocity), 0);
-            mMidiOutputQueue.addEvent(juce::MidiMessage::noteOff(midiOutChannel, note), 1);
+
+            // Store the new note number
+            mLastOscNoteSeq = newPosition;
         }
     }
     else if (message.getAddressPattern() == "/noteSequencePosition")
@@ -235,9 +235,16 @@ void AmenBreakControllerAudioProcessor::oscMessageReceived(const juce::OSCMessag
             int newPosition = message[0].getInt32();
             mValueTreeState.getParameter("noteSequencePosition")->setValueNotifyingHost(static_cast<float>(newPosition) / 15.0f);
 
+            // Turn off the last note from this sequence
+            if (mLastOscNoteNoteSeq >= 0)
+                mMidiOutputQueue.addEvent(juce::MidiMessage::noteOff(midiOutChannel, mLastOscNoteNoteSeq), 0);
+
+            // Turn on the new note
             const int note = newPosition;
             mMidiOutputQueue.addEvent(juce::MidiMessage::noteOn(midiOutChannel, note, velocity), 0);
-            mMidiOutputQueue.addEvent(juce::MidiMessage::noteOff(midiOutChannel, note), 1);
+
+            // Store the new note number
+            mLastOscNoteNoteSeq = newPosition;
         }
     }
 }

@@ -75,11 +75,11 @@ private:
     int mLastTimerResetCcValue { 0 };
     int mLastSoftResetCcValue { 0 };
 
-    double mSampleRate { 44100.0 };
-
     // --- OSC State ---
     juce::OSCSender mSender;
     juce::OSCReceiver mReceiver;
+    int mLastOscNoteSeq { -1 };
+    int mLastOscNoteNoteSeq { -1 };
 
     void oscMessageReceived (const juce::OSCMessage& message) override;
     bool shouldTriggerReset(int mode, int previousValue, int currentValue);

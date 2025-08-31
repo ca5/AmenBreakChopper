@@ -335,12 +335,18 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     const int bufferLength = buffer.getNumSamples();
     double ppqAtEndOfBlock = ppqAtStartOfBlock + (bufferLength * ppqPerSample);
 
-    // Calculate the duration of an eighth note in samples, based on the current BPM.
-    const int eighthNoteDurationInSamples = static_cast<int>(((60.0 / bpm) * 0.5) * sampleRate);
-
     while (mNextEighthNotePpq < ppqAtEndOfBlock)
     {
         const int tickSample = static_cast<int>((mNextEighthNotePpq - ppqAtStartOfBlock) / ppqPerSample);
+
+        // On reset, turn off any hanging notes first
+        if (mTimerResetQueued || mSoftResetQueued)
+        {
+            if (mLastNote1 >= 0) processedMidi.addEvent(juce::MidiMessage::noteOff(midiOutChannel, mLastNote1), tickSample);
+            if (mLastNote2 >= 0) processedMidi.addEvent(juce::MidiMessage::noteOff(midiOutChannel, mLastNote2), tickSample);
+            mLastNote1 = -1;
+            mLastNote2 = -1;
+        }
 
         if (mTimerResetQueued)
         {
@@ -382,10 +388,19 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
         const int note2 = 32 + mSequencePosition;
         const juce::uint8 velocity = 100;
 
+        // Send Note Off for the previous note if it's valid
+        if (mLastNote1 >= 0)
+            processedMidi.addEvent(juce::MidiMessage::noteOff(midiOutChannel, mLastNote1), tickSample);
+        if (mLastNote2 >= 0)
+            processedMidi.addEvent(juce::MidiMessage::noteOff(midiOutChannel, mLastNote2), tickSample);
+
+        // Send Note On for the current note
         processedMidi.addEvent(juce::MidiMessage::noteOn(midiOutChannel, note1, velocity), tickSample);
-        processedMidi.addEvent(juce::MidiMessage::noteOff(midiOutChannel, note1), tickSample + eighthNoteDurationInSamples);
         processedMidi.addEvent(juce::MidiMessage::noteOn(midiOutChannel, note2, velocity), tickSample);
-        processedMidi.addEvent(juce::MidiMessage::noteOff(midiOutChannel, note2), tickSample + eighthNoteDurationInSamples);
+
+        // Store the current note as the last one for the next tick
+        mLastNote1 = note1;
+        mLastNote2 = note2;
 
         mNewNoteReceived = false;
 
