@@ -45,9 +45,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout AmenBreakChopperAudioProcess
     layout.add(std::make_unique<juce::AudioParameterInt>("oscReceivePort", "OSC Receive Port", 1, 65535, 9002));
 
     // MIDI CC Settings
+    juce::StringArray ccModes = { "Any", "Gate-On", "Gate-Off" };
     layout.add(std::make_unique<juce::AudioParameterInt>("midiCcSeqReset", "MIDI CC Seq Reset", 0, 127, 93));
+    layout.add(std::make_unique<juce::AudioParameterChoice>("midiCcSeqResetMode", "Seq Reset Mode", ccModes, 1));
     layout.add(std::make_unique<juce::AudioParameterInt>("midiCcTimerReset", "MIDI CC Timer Reset", 0, 127, 106));
+    layout.add(std::make_unique<juce::AudioParameterChoice>("midiCcTimerResetMode", "Timer Reset Mode", ccModes, 1));
     layout.add(std::make_unique<juce::AudioParameterInt>("midiCcSoftReset", "MIDI CC Soft Reset", 0, 127, 97));
+    layout.add(std::make_unique<juce::AudioParameterChoice>("midiCcSoftResetMode", "Soft Reset Mode", ccModes, 1));
 
     return layout;
 }
@@ -178,6 +182,10 @@ void AmenBreakChopperAudioProcessor::prepareToPlay (double sampleRate, int sampl
     mTimerResetQueued = false;
     mNewNoteReceived = false;
     mSoftResetQueued = false;
+
+    mLastSeqResetCcValue = 0;
+    mLastTimerResetCcValue = 0;
+    mLastSoftResetCcValue = 0;
 }
 
 void AmenBreakChopperAudioProcessor::releaseResources()
@@ -210,6 +218,21 @@ bool AmenBreakChopperAudioProcessor::isBusesLayoutSupported (const BusesLayout& 
   #endif
 }
 #endif
+
+bool AmenBreakChopperAudioProcessor::shouldTriggerReset(int mode, int previousValue, int currentValue)
+{
+    switch (mode)
+    {
+        case 0: // Any
+            return true;
+        case 1: // Gate-On
+            return currentValue >= 65 && previousValue < 65;
+        case 2: // Gate-Off
+            return currentValue <= 63 && previousValue > 63;
+        default:
+            return false;
+    }
+}
 
 void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
@@ -273,13 +296,36 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
             }
             else if (message.isController())
             {
+                const int controllerNumber = message.getControllerNumber();
+                const int controllerValue = message.getControllerValue();
+
                 const int ccSeqReset = (int)mValueTreeState.getRawParameterValue("midiCcSeqReset")->load();
                 const int ccTimerReset = (int)mValueTreeState.getRawParameterValue("midiCcTimerReset")->load();
                 const int ccSoftReset = (int)mValueTreeState.getRawParameterValue("midiCcSoftReset")->load();
 
-                if (message.getControllerNumber() == ccSeqReset) mSequenceResetQueued = true;
-                if (message.getControllerNumber() == ccTimerReset) mTimerResetQueued = true;
-                if (message.getControllerNumber() == ccSoftReset) mSoftResetQueued = true;
+                if (controllerNumber == ccSeqReset)
+                {
+                    const int mode = (int)mValueTreeState.getRawParameterValue("midiCcSeqResetMode")->load();
+                    if (shouldTriggerReset(mode, mLastSeqResetCcValue, controllerValue))
+                        mSequenceResetQueued = true;
+                    mLastSeqResetCcValue = controllerValue;
+                }
+
+                if (controllerNumber == ccTimerReset)
+                {
+                    const int mode = (int)mValueTreeState.getRawParameterValue("midiCcTimerResetMode")->load();
+                    if (shouldTriggerReset(mode, mLastTimerResetCcValue, controllerValue))
+                        mTimerResetQueued = true;
+                    mLastTimerResetCcValue = controllerValue;
+                }
+
+                if (controllerNumber == ccSoftReset)
+                {
+                    const int mode = (int)mValueTreeState.getRawParameterValue("midiCcSoftResetMode")->load();
+                    if (shouldTriggerReset(mode, mLastSoftResetCcValue, controllerValue))
+                        mSoftResetQueued = true;
+                    mLastSoftResetCcValue = controllerValue;
+                }
             }
         }
     }

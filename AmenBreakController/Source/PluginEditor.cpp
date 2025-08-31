@@ -50,6 +50,29 @@ AmenBreakControllerAudioProcessorEditor::AmenBreakControllerAudioProcessorEditor
     mMidiOutputChannelSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, true, 50, 25);
     addAndMakeVisible(mMidiOutputChannelSlider);
 
+    // MIDI CC Config
+    mMidiCcSeqResetLabel.setText("Sequence Reset CC", juce::dontSendNotification);
+    addAndMakeVisible(mMidiCcSeqResetLabel);
+    mMidiCcTimerResetLabel.setText("Timer Reset CC", juce::dontSendNotification);
+    addAndMakeVisible(mMidiCcTimerResetLabel);
+    mMidiCcSoftResetLabel.setText("Soft Reset CC", juce::dontSendNotification);
+    addAndMakeVisible(mMidiCcSoftResetLabel);
+
+    mMidiCcSeqResetSlider.setSliderStyle(juce::Slider::SliderStyle::IncDecButtons);
+    mMidiCcSeqResetSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, true, 50, 25);
+    addAndMakeVisible(mMidiCcSeqResetSlider);
+    addAndMakeVisible(mMidiCcSeqResetModeComboBox);
+
+    mMidiCcTimerResetSlider.setSliderStyle(juce::Slider::SliderStyle::IncDecButtons);
+    mMidiCcTimerResetSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, true, 50, 25);
+    addAndMakeVisible(mMidiCcTimerResetSlider);
+    addAndMakeVisible(mMidiCcTimerResetModeComboBox);
+
+    mMidiCcSoftResetSlider.setSliderStyle(juce::Slider::SliderStyle::IncDecButtons);
+    mMidiCcSoftResetSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, true, 50, 25);
+    addAndMakeVisible(mMidiCcSoftResetSlider);
+    addAndMakeVisible(mMidiCcSoftResetModeComboBox);
+
     // === OSC Configuration ===
     mOscConfigLabel.setText("OSC Configuration", juce::dontSendNotification);
     mOscConfigLabel.setFont(juce::Font(16.0f, juce::Font::bold));
@@ -99,6 +122,18 @@ AmenBreakControllerAudioProcessorEditor::AmenBreakControllerAudioProcessorEditor
     mOscSendPortAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "oscSendPort", mOscSendPortSlider));
     mOscReceivePortAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "oscReceivePort", mOscReceivePortSlider));
 
+    auto& vts = audioProcessor.getValueTreeState();
+    mMidiCcSeqResetModeComboBox.addItemList(vts.getParameter("midiCcSeqResetMode")->getAllValueStrings(), 1);
+    mMidiCcTimerResetModeComboBox.addItemList(vts.getParameter("midiCcTimerResetMode")->getAllValueStrings(), 1);
+    mMidiCcSoftResetModeComboBox.addItemList(vts.getParameter("midiCcSoftResetMode")->getAllValueStrings(), 1);
+
+    mMidiCcSeqResetAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(vts, "midiCcSeqReset", mMidiCcSeqResetSlider));
+    mMidiCcSeqResetModeAttachment.reset(new juce::AudioProcessorValueTreeState::ComboBoxAttachment(vts, "midiCcSeqResetMode", mMidiCcSeqResetModeComboBox));
+    mMidiCcTimerResetAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(vts, "midiCcTimerReset", mMidiCcTimerResetSlider));
+    mMidiCcTimerResetModeAttachment.reset(new juce::AudioProcessorValueTreeState::ComboBoxAttachment(vts, "midiCcTimerResetMode", mMidiCcTimerResetModeComboBox));
+    mMidiCcSoftResetAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(vts, "midiCcSoftReset", mMidiCcSoftResetSlider));
+    mMidiCcSoftResetModeAttachment.reset(new juce::AudioProcessorValueTreeState::ComboBoxAttachment(vts, "midiCcSoftResetMode", mMidiCcSoftResetModeComboBox));
+
     setSize (400, 550);
 }
 
@@ -138,6 +173,21 @@ void AmenBreakControllerAudioProcessorEditor::resized()
     y += rowHeight + 5;
     mMidiOutputChannelLabel.setBounds(10, y, labelWidth, rowHeight);
     mMidiOutputChannelSlider.setBounds(10 + labelWidth, y, 100, rowHeight);
+    y += rowHeight + 5;
+
+    mMidiCcSeqResetLabel.setBounds(10, y, labelWidth, rowHeight);
+    mMidiCcSeqResetSlider.setBounds(10 + labelWidth, y, 100, rowHeight);
+    mMidiCcSeqResetModeComboBox.setBounds(10 + labelWidth + 105, y, controlWidth - 105, rowHeight);
+    y += rowHeight + 5;
+
+    mMidiCcTimerResetLabel.setBounds(10, y, labelWidth, rowHeight);
+    mMidiCcTimerResetSlider.setBounds(10 + labelWidth, y, 100, rowHeight);
+    mMidiCcTimerResetModeComboBox.setBounds(10 + labelWidth + 105, y, controlWidth - 105, rowHeight);
+    y += rowHeight + 5;
+
+    mMidiCcSoftResetLabel.setBounds(10, y, labelWidth, rowHeight);
+    mMidiCcSoftResetSlider.setBounds(10 + labelWidth, y, 100, rowHeight);
+    mMidiCcSoftResetModeComboBox.setBounds(10 + labelWidth + 105, y, controlWidth - 105, rowHeight);
     y += rowHeight + 15;
 
     // === OSC Configuration ===

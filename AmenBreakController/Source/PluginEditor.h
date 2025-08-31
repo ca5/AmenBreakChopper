@@ -44,6 +44,16 @@ private:
     juce::Label mMidiInputChannelLabel;
     juce::Label mMidiOutputChannelLabel;
 
+    juce::Label mMidiCcSeqResetLabel;
+    juce::Slider mMidiCcSeqResetSlider;
+    juce::ComboBox mMidiCcSeqResetModeComboBox;
+    juce::Label mMidiCcTimerResetLabel;
+    juce::Slider mMidiCcTimerResetSlider;
+    juce::ComboBox mMidiCcTimerResetModeComboBox;
+    juce::Label mMidiCcSoftResetLabel;
+    juce::Slider mMidiCcSoftResetSlider;
+    juce::ComboBox mMidiCcSoftResetModeComboBox;
+
     // OSC Config
     juce::Label mOscConfigLabel;
     juce::TextEditor mOscHostAddressEditor;
@@ -66,6 +76,13 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mMidiOutputChannelAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mOscSendPortAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mOscReceivePortAttachment;
+
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mMidiCcSeqResetAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> mMidiCcSeqResetModeAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mMidiCcTimerResetAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> mMidiCcTimerResetModeAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mMidiCcSoftResetAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> mMidiCcSoftResetModeAttachment;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AmenBreakControllerAudioProcessorEditor)
 };
