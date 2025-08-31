@@ -39,11 +39,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout AmenBreakControllerAudioProc
     // MIDI CC Settings
     juce::StringArray ccModes = { "Any", "Gate-On", "Gate-Off" };
     layout.add(std::make_unique<juce::AudioParameterInt>("midiCcSeqReset", "MIDI CC Seq Reset", 0, 127, 93));
-    layout.add(std::make_unique<juce::AudioParameterChoice>("midiCcSeqResetMode", "Seq Reset Mode", ccModes, 0));
+    layout.add(std::make_unique<juce::AudioParameterChoice>("midiCcSeqResetMode", "Seq Reset Mode", ccModes, 1));
     layout.add(std::make_unique<juce::AudioParameterInt>("midiCcTimerReset", "MIDI CC Timer Reset", 0, 127, 106));
-    layout.add(std::make_unique<juce::AudioParameterChoice>("midiCcTimerResetMode", "Timer Reset Mode", ccModes, 0));
+    layout.add(std::make_unique<juce::AudioParameterChoice>("midiCcTimerResetMode", "Timer Reset Mode", ccModes, 1));
     layout.add(std::make_unique<juce::AudioParameterInt>("midiCcSoftReset", "MIDI CC Soft Reset", 0, 127, 97));
-    layout.add(std::make_unique<juce::AudioParameterChoice>("midiCcSoftResetMode", "Soft Reset Mode", ccModes, 0));
+    layout.add(std::make_unique<juce::AudioParameterChoice>("midiCcSoftResetMode", "Soft Reset Mode", ccModes, 1));
 
     // OSC Settings
     layout.add(std::make_unique<juce::AudioParameterInt>("oscSendPort", "OSC Send Port", 1, 65535, 9002));
