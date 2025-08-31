@@ -335,6 +335,9 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     const int bufferLength = buffer.getNumSamples();
     double ppqAtEndOfBlock = ppqAtStartOfBlock + (bufferLength * ppqPerSample);
 
+    // Calculate the duration of an eighth note in samples, based on the current BPM.
+    const int eighthNoteDurationInSamples = static_cast<int>(((60.0 / bpm) * 0.5) * sampleRate);
+
     while (mNextEighthNotePpq < ppqAtEndOfBlock)
     {
         const int tickSample = static_cast<int>((mNextEighthNotePpq - ppqAtStartOfBlock) / ppqPerSample);
@@ -378,12 +381,11 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
         const int note1 = mNoteSequencePosition;
         const int note2 = 32 + mSequencePosition;
         const juce::uint8 velocity = 100;
-        const int noteDurationInSamples = 50;
 
         processedMidi.addEvent(juce::MidiMessage::noteOn(midiOutChannel, note1, velocity), tickSample);
-        processedMidi.addEvent(juce::MidiMessage::noteOff(midiOutChannel, note1), tickSample + noteDurationInSamples);
+        processedMidi.addEvent(juce::MidiMessage::noteOff(midiOutChannel, note1), tickSample + eighthNoteDurationInSamples);
         processedMidi.addEvent(juce::MidiMessage::noteOn(midiOutChannel, note2, velocity), tickSample);
-        processedMidi.addEvent(juce::MidiMessage::noteOff(midiOutChannel, note2), tickSample + noteDurationInSamples);
+        processedMidi.addEvent(juce::MidiMessage::noteOff(midiOutChannel, note2), tickSample + eighthNoteDurationInSamples);
 
         mNewNoteReceived = false;
 

@@ -103,6 +103,7 @@ bool AmenBreakControllerAudioProcessor::shouldTriggerReset(int mode, int previou
 
 void AmenBreakControllerAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
+    mSampleRate = sampleRate;
     mLastSeqResetCcValue = 0;
     mLastTimerResetCcValue = 0;
     mLastSoftResetCcValue = 0;
@@ -130,6 +131,17 @@ void AmenBreakControllerAudioProcessor::processBlock (juce::AudioBuffer<float>& 
 {
     buffer.clear();
     const int midiInChannel = (int)mValueTreeState.getRawParameterValue("midiInputChannel")->load();
+
+    // --- Get transport state from host ---
+    double bpm = 120.0;
+    if (auto* playHead = getPlayHead())
+    {
+        if (auto positionInfo = playHead->getPosition())
+        {
+            bpm = positionInfo->getBpm().orFallback(120.0);
+        }
+    }
+    const int eighthNoteDurationInSamples = static_cast<int>(((60.0 / bpm) * 0.5) * mSampleRate);
 
     // --- Handle MIDI In -> OSC Out ---
     for (const auto metadata : midiMessages)
@@ -186,12 +198,11 @@ void AmenBreakControllerAudioProcessor::processBlock (juce::AudioBuffer<float>& 
     const juce::ScopedLock sl (mQueueLock);
     if (!mMidiOutputQueue.isEmpty())
     {
-        const int noteDurationInSamples = 50;
         for (const auto& metadata : mMidiOutputQueue)
         {
             auto msg = metadata.getMessage();
             // Note-ons at the start of the buffer, note-offs after a short duration
-            int samplePos = msg.isNoteOff() ? noteDurationInSamples : 0;
+            int samplePos = msg.isNoteOff() ? eighthNoteDurationInSamples : 0;
             midiMessages.addEvent(msg, samplePos);
         }
         mMidiOutputQueue.clear();

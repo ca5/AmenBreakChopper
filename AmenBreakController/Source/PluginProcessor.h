@@ -75,6 +75,8 @@ private:
     int mLastTimerResetCcValue { 0 };
     int mLastSoftResetCcValue { 0 };
 
+    double mSampleRate { 44100.0 };
+
     // --- OSC State ---
     juce::OSCSender mSender;
     juce::OSCReceiver mReceiver;
