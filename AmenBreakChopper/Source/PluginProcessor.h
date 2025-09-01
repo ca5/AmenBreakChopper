@@ -78,6 +78,8 @@ private:
     bool mTimerResetQueued { false };
     bool mNewNoteReceived { false };
     bool mSoftResetQueued { false };
+    int mLastNote1 { -1 };
+    int mLastNote2 { -1 };
 
     // --- CC Value State ---
     int mLastSeqResetCcValue { 0 };
