@@ -53,6 +53,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout AmenBreakChopperAudioProcess
     layout.add(std::make_unique<juce::AudioParameterInt>("midiCcSoftReset", "MIDI CC Soft Reset", 0, 127, 97));
     layout.add(std::make_unique<juce::AudioParameterChoice>("midiCcSoftResetMode", "Soft Reset Mode", ccModes, 1));
 
+    // Delay adjustment
+    layout.add(std::make_unique<juce::AudioParameterInt>("delayAdjust", "Delay Adjust", -100, 100, 0));
+    layout.add(std::make_unique<juce::AudioParameterInt>("midiCcDelayAdjustFwd", "MIDI CC Delay Adjust Fwd", 0, 127, 0));
+    layout.add(std::make_unique<juce::AudioParameterInt>("midiCcDelayAdjustBwd", "MIDI CC Delay Adjust Bwd", 0, 127, 0));
+
     return layout;
 }
 
@@ -186,6 +191,8 @@ void AmenBreakChopperAudioProcessor::prepareToPlay (double sampleRate, int sampl
     mLastSeqResetCcValue = 0;
     mLastTimerResetCcValue = 0;
     mLastSoftResetCcValue = 0;
+    mLastDelayAdjustFwdCcValue = 0;
+    mLastDelayAdjustBwdCcValue = 0;
 }
 
 void AmenBreakChopperAudioProcessor::releaseResources()
@@ -326,6 +333,22 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
                         mSoftResetQueued = true;
                     mLastSoftResetCcValue = controllerValue;
                 }
+
+                const int ccDelayAdjustFwd = (int)mValueTreeState.getRawParameterValue("midiCcDelayAdjustFwd")->load();
+                if (controllerNumber == ccDelayAdjustFwd && controllerValue >= 65 && mLastDelayAdjustFwdCcValue < 65)
+                {
+                    auto* param = static_cast<juce::AudioParameterInt*>(mValueTreeState.getParameter("delayAdjust"));
+                    param->operator=(param->get() + 1);
+                }
+                mLastDelayAdjustFwdCcValue = controllerValue;
+
+                const int ccDelayAdjustBwd = (int)mValueTreeState.getRawParameterValue("midiCcDelayAdjustBwd")->load();
+                if (controllerNumber == ccDelayAdjustBwd && controllerValue >= 65 && mLastDelayAdjustBwdCcValue < 65)
+                {
+                    auto* param = static_cast<juce::AudioParameterInt*>(mValueTreeState.getParameter("delayAdjust"));
+                    param->operator=(param->get() - 1);
+                }
+                mLastDelayAdjustBwdCcValue = controllerValue;
             }
         }
     }
@@ -416,6 +439,8 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     const int delayBufferLength = mDelayBuffer.getNumSamples();
     auto* delayTimeParam = mValueTreeState.getRawParameterValue("delayTime");
     const int currentDelayTime = static_cast<int>(delayTimeParam->load());
+    auto* delayAdjustParam = mValueTreeState.getRawParameterValue("delayAdjust");
+    const int delayAdjust = static_cast<int>(delayAdjustParam->load());
 
     for (int sample = 0; sample < bufferLength; ++sample)
     {
@@ -432,6 +457,7 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
         {
             double eighthNoteTime = (60.0 / bpm) / 2.0;
             int delayTimeInSamples = static_cast<int>(eighthNoteTime * currentDelayTime * sampleRate);
+            delayTimeInSamples += delayAdjust;
 
             for (int channel = 0; channel < totalNumInputChannels; ++channel)
             {

@@ -134,13 +134,47 @@ AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor (Amen
     mOscSendPortAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "oscSendPort", mOscSendPortSlider));
     mOscReceivePortAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "oscReceivePort", mOscReceivePortSlider));
 
+    // === Delay Adjustment ===
+    mDelayAdjustLabel.setText("Delay Adjust (samples)", juce::dontSendNotification);
+    addAndMakeVisible(mDelayAdjustLabel);
+    mDelayAdjustSlider.setSliderStyle(juce::Slider::SliderStyle::LinearHorizontal);
+    mDelayAdjustSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 50, 25);
+    addAndMakeVisible(mDelayAdjustSlider);
+
+    addAndMakeVisible(mDelayAdjustFwdButton);
+    addAndMakeVisible(mDelayAdjustBwdButton);
+    mDelayAdjustFwdButton.onClick = [this] {
+        mDelayAdjustSlider.setValue(mDelayAdjustSlider.getValue() + 1);
+    };
+    mDelayAdjustBwdButton.onClick = [this] {
+        mDelayAdjustSlider.setValue(mDelayAdjustSlider.getValue() - 1);
+    };
+
+    mDelayAdjustCcLabel.setText("Delay Adjust CC", juce::dontSendNotification);
+    addAndMakeVisible(mDelayAdjustCcLabel);
+    mDelayAdjustFwdCcLabel.setText("Forward", juce::dontSendNotification);
+    addAndMakeVisible(mDelayAdjustFwdCcLabel);
+    mDelayAdjustBwdCcLabel.setText("Backward", juce::dontSendNotification);
+    addAndMakeVisible(mDelayAdjustBwdCcLabel);
+
+    mDelayAdjustFwdCcSlider.setSliderStyle(juce::Slider::SliderStyle::IncDecButtons);
+    mDelayAdjustFwdCcSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, true, 50, 25);
+    addAndMakeVisible(mDelayAdjustFwdCcSlider);
+    mDelayAdjustBwdCcSlider.setSliderStyle(juce::Slider::SliderStyle::IncDecButtons);
+    mDelayAdjustBwdCcSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, true, 50, 25);
+    addAndMakeVisible(mDelayAdjustBwdCcSlider);
+
+    mDelayAdjustAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "delayAdjust", mDelayAdjustSlider));
+    mDelayAdjustFwdCcAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "midiCcDelayAdjustFwd", mDelayAdjustFwdCcSlider));
+    mDelayAdjustBwdCcAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "midiCcDelayAdjustBwd", mDelayAdjustBwdCcSlider));
+
     // Add listener for controlMode
     audioProcessor.getValueTreeState().addParameterListener("controlMode", this);
 
     // Set initial state
     updateControlEnablement();
 
-    setSize (400, 650);
+    setSize (400, 750);
 }
 
 AmenBreakChopperAudioProcessorEditor::~AmenBreakChopperAudioProcessorEditor()
@@ -213,6 +247,21 @@ void AmenBreakChopperAudioProcessorEditor::resized()
     y += rowHeight + 5;
     mOscReceivePortLabel.setBounds(10, y, labelWidth, rowHeight);
     mOscReceivePortSlider.setBounds(10 + labelWidth, y, 120, rowHeight);
+    y += rowHeight + 15;
+
+    // === Delay Adjustment ===
+    mDelayAdjustLabel.setBounds(10, y, labelWidth, rowHeight);
+    mDelayAdjustSlider.setBounds(10 + labelWidth, y, controlWidth - 80, rowHeight);
+    mDelayAdjustBwdButton.setBounds(10 + labelWidth + controlWidth - 75, y, 35, rowHeight);
+    mDelayAdjustFwdButton.setBounds(10 + labelWidth + controlWidth - 35, y, 35, rowHeight);
+    y += rowHeight + 5;
+    mDelayAdjustCcLabel.setBounds(10, y, getWidth() - 20, rowHeight);
+    y += rowHeight + 5;
+    mDelayAdjustBwdCcLabel.setBounds(10, y, labelWidth, rowHeight);
+    mDelayAdjustBwdCcSlider.setBounds(10 + labelWidth, y, 100, rowHeight);
+    y += rowHeight + 5;
+    mDelayAdjustFwdCcLabel.setBounds(10, y, labelWidth, rowHeight);
+    mDelayAdjustFwdCcSlider.setBounds(10 + labelWidth, y, 100, rowHeight);
 }
 
 void AmenBreakChopperAudioProcessorEditor::textEditorTextChanged(juce::TextEditor& editor)
@@ -262,4 +311,15 @@ void AmenBreakChopperAudioProcessorEditor::updateControlEnablement()
     mOscSendPortSlider.setEnabled(isOscMode);
     mOscReceivePortLabel.setEnabled(isOscMode);
     mOscReceivePortSlider.setEnabled(isOscMode);
+
+    // Delay adjustment controls are always enabled
+    mDelayAdjustLabel.setEnabled(true);
+    mDelayAdjustSlider.setEnabled(true);
+    mDelayAdjustFwdButton.setEnabled(true);
+    mDelayAdjustBwdButton.setEnabled(true);
+    mDelayAdjustCcLabel.setEnabled(isInternalMode);
+    mDelayAdjustFwdCcLabel.setEnabled(isInternalMode);
+    mDelayAdjustFwdCcSlider.setEnabled(isInternalMode);
+    mDelayAdjustBwdCcLabel.setEnabled(isInternalMode);
+    mDelayAdjustBwdCcSlider.setEnabled(isInternalMode);
 }
