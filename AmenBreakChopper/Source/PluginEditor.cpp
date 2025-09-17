@@ -168,13 +168,20 @@ AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor (Amen
     mDelayAdjustFwdCcAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "midiCcDelayAdjustFwd", mDelayAdjustFwdCcSlider));
     mDelayAdjustBwdCcAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "midiCcDelayAdjustBwd", mDelayAdjustBwdCcSlider));
 
+    mDelayAdjustCcStepLabel.setText("CC Step", juce::dontSendNotification);
+    addAndMakeVisible(mDelayAdjustCcStepLabel);
+    mDelayAdjustCcStepSlider.setSliderStyle(juce::Slider::SliderStyle::IncDecButtons);
+    mDelayAdjustCcStepSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, true, 50, 25);
+    addAndMakeVisible(mDelayAdjustCcStepSlider);
+    mDelayAdjustCcStepAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "delayAdjustCcStep", mDelayAdjustCcStepSlider));
+
     // Add listener for controlMode
     audioProcessor.getValueTreeState().addParameterListener("controlMode", this);
 
     // Set initial state
     updateControlEnablement();
 
-    setSize (400, 750);
+    setSize (400, 800);
 }
 
 AmenBreakChopperAudioProcessorEditor::~AmenBreakChopperAudioProcessorEditor()
@@ -262,6 +269,9 @@ void AmenBreakChopperAudioProcessorEditor::resized()
     y += rowHeight + 5;
     mDelayAdjustFwdCcLabel.setBounds(10, y, labelWidth, rowHeight);
     mDelayAdjustFwdCcSlider.setBounds(10 + labelWidth, y, 100, rowHeight);
+    y += rowHeight + 5;
+    mDelayAdjustCcStepLabel.setBounds(10, y, labelWidth, rowHeight);
+    mDelayAdjustCcStepSlider.setBounds(10 + labelWidth, y, 100, rowHeight);
 }
 
 void AmenBreakChopperAudioProcessorEditor::textEditorTextChanged(juce::TextEditor& editor)
@@ -322,4 +332,6 @@ void AmenBreakChopperAudioProcessorEditor::updateControlEnablement()
     mDelayAdjustFwdCcSlider.setEnabled(isInternalMode);
     mDelayAdjustBwdCcLabel.setEnabled(isInternalMode);
     mDelayAdjustBwdCcSlider.setEnabled(isInternalMode);
+    mDelayAdjustCcStepLabel.setEnabled(isInternalMode);
+    mDelayAdjustCcStepSlider.setEnabled(isInternalMode);
 }

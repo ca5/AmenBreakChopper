@@ -54,9 +54,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout AmenBreakChopperAudioProcess
     layout.add(std::make_unique<juce::AudioParameterChoice>("midiCcSoftResetMode", "Soft Reset Mode", ccModes, 1));
 
     // Delay adjustment
-    layout.add(std::make_unique<juce::AudioParameterInt>("delayAdjust", "Delay Adjust", -100, 100, 0));
+    layout.add(std::make_unique<juce::AudioParameterInt>("delayAdjust", "Delay Adjust", -1024, 1024, 0));
     layout.add(std::make_unique<juce::AudioParameterInt>("midiCcDelayAdjustFwd", "MIDI CC Delay Adjust Fwd", 0, 127, 0));
     layout.add(std::make_unique<juce::AudioParameterInt>("midiCcDelayAdjustBwd", "MIDI CC Delay Adjust Bwd", 0, 127, 0));
+    layout.add(std::make_unique<juce::AudioParameterInt>("delayAdjustCcStep", "Delay Adjust CC Step", 1, 128, 1));
 
     return layout;
 }
@@ -337,16 +338,18 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
                 const int ccDelayAdjustFwd = (int)mValueTreeState.getRawParameterValue("midiCcDelayAdjustFwd")->load();
                 if (controllerNumber == ccDelayAdjustFwd && controllerValue >= 65 && mLastDelayAdjustFwdCcValue < 65)
                 {
+                    auto* stepParam = static_cast<juce::AudioParameterInt*>(mValueTreeState.getParameter("delayAdjustCcStep"));
                     auto* param = static_cast<juce::AudioParameterInt*>(mValueTreeState.getParameter("delayAdjust"));
-                    param->operator=(param->get() + 1);
+                    param->operator=(param->get() + stepParam->get());
                 }
                 mLastDelayAdjustFwdCcValue = controllerValue;
 
                 const int ccDelayAdjustBwd = (int)mValueTreeState.getRawParameterValue("midiCcDelayAdjustBwd")->load();
                 if (controllerNumber == ccDelayAdjustBwd && controllerValue >= 65 && mLastDelayAdjustBwdCcValue < 65)
                 {
+                    auto* stepParam = static_cast<juce::AudioParameterInt*>(mValueTreeState.getParameter("delayAdjustCcStep"));
                     auto* param = static_cast<juce::AudioParameterInt*>(mValueTreeState.getParameter("delayAdjust"));
-                    param->operator=(param->get() - 1);
+                    param->operator=(param->get() - stepParam->get());
                 }
                 mLastDelayAdjustBwdCcValue = controllerValue;
             }
