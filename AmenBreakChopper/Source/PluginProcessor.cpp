@@ -378,6 +378,10 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
             mTimerResetQueued = false;
             // Also reset PPQ tracking to the current tick
             mNextEighthNotePpq = std::ceil(ppqAtStartOfBlock * 2.0) / 2.0;
+
+            // Reset delay adjust value
+            if (auto* p = mValueTreeState.getParameter("delayAdjust"))
+                p->setValueNotifyingHost(p->getDefaultValue());
         }
 
         if (mSequenceResetQueued)
