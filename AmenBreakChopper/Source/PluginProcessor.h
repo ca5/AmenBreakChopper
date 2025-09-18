@@ -87,6 +87,7 @@ private:
     int mLastSoftResetCcValue { 0 };
     int mLastDelayAdjustFwdCcValue { 0 };
     int mLastDelayAdjustBwdCcValue { 0 };
+    int mLastDelayAdjust { 0 };
 
     // --- OSC State ---
     juce::OSCSender mSender;

@@ -194,6 +194,7 @@ void AmenBreakChopperAudioProcessor::prepareToPlay (double sampleRate, int sampl
     mLastSoftResetCcValue = 0;
     mLastDelayAdjustFwdCcValue = 0;
     mLastDelayAdjustBwdCcValue = 0;
+    mLastDelayAdjust = 0;
 }
 
 void AmenBreakChopperAudioProcessor::releaseResources()
@@ -361,6 +362,18 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     const int bufferLength = buffer.getNumSamples();
     double ppqAtEndOfBlock = ppqAtStartOfBlock + (bufferLength * ppqPerSample);
 
+    // --- Apply delayAdjust to sequencer phase ---
+    auto* delayAdjustParam = static_cast<juce::AudioParameterInt*>(mValueTreeState.getParameter("delayAdjust"));
+    const int currentDelayAdjust = delayAdjustParam->get();
+    const int deltaDelayAdjust = currentDelayAdjust - mLastDelayAdjust;
+
+    if (deltaDelayAdjust != 0)
+    {
+        const double deltaPpq = deltaDelayAdjust * ppqPerSample;
+        mNextEighthNotePpq += deltaPpq;
+    }
+    mLastDelayAdjust = currentDelayAdjust;
+
     while (mNextEighthNotePpq < ppqAtEndOfBlock)
     {
         const int tickSample = static_cast<int>((mNextEighthNotePpq - ppqAtStartOfBlock) / ppqPerSample);
@@ -382,9 +395,10 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
             // Also reset PPQ tracking to the current tick
             mNextEighthNotePpq = std::ceil(ppqAtStartOfBlock * 2.0) / 2.0;
 
-            // Reset delay adjust value
-            if (auto* p = mValueTreeState.getParameter("delayAdjust"))
-                p->setValueNotifyingHost(p->getDefaultValue());
+            // Apply the current delayAdjust as a phase offset on reset
+            const int currentDelayAdjust = static_cast<juce::AudioParameterInt*>(mValueTreeState.getParameter("delayAdjust"))->get();
+            mNextEighthNotePpq += currentDelayAdjust * ppqPerSample;
+            mLastDelayAdjust = currentDelayAdjust;
         }
 
         if (mSequenceResetQueued)
@@ -446,8 +460,6 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     const int delayBufferLength = mDelayBuffer.getNumSamples();
     auto* delayTimeParam = mValueTreeState.getRawParameterValue("delayTime");
     const int currentDelayTime = static_cast<int>(delayTimeParam->load());
-    auto* delayAdjustParam = mValueTreeState.getRawParameterValue("delayAdjust");
-    const int delayAdjust = static_cast<int>(delayAdjustParam->load());
 
     for (int sample = 0; sample < bufferLength; ++sample)
     {
@@ -464,7 +476,6 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
         {
             double eighthNoteTime = (60.0 / bpm) / 2.0;
             int delayTimeInSamples = static_cast<int>(eighthNoteTime * currentDelayTime * sampleRate);
-            delayTimeInSamples += delayAdjust;
 
             for (int channel = 0; channel < totalNumInputChannels; ++channel)
             {
