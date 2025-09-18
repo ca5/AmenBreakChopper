@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <JUCERPROJECT id="GUwkNr" name="AmenBreakChopper" projectType="audioplug" useAppConfig="0"
-              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" version="0.2.3"
+              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" version="0.2.2"
               pluginFormats="buildAU,buildAUv3,buildStandalone,buildVST3" pluginCharacteristicsValue="pluginEditorRequiresKeys,pluginProducesMidiOut,pluginWantsAudioInput,pluginWantsMidiIn"
               pluginManufacturer="Ca5" bundleIdentifier="me.ca5.AmenBreakChopper"
               companyWebsite="ca5.me" pluginVST3Category="Fx" projectLineFeed="&#10;">

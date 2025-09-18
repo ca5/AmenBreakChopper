@@ -54,7 +54,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout AmenBreakChopperAudioProcess
     layout.add(std::make_unique<juce::AudioParameterChoice>("midiCcSoftResetMode", "Soft Reset Mode", ccModes, 1));
 
     // Delay adjustment
-    layout.add(std::make_unique<juce::AudioParameterInt>("delayAdjust", "Delay Adjust", -1024, 1024, 0));
+    layout.add(std::make_unique<juce::AudioParameterInt>("delayAdjust", "Delay Adjust", -4096, 4096, 0));
     layout.add(std::make_unique<juce::AudioParameterInt>("midiCcDelayAdjustFwd", "MIDI CC Delay Adjust Fwd", 0, 127, 0));
     layout.add(std::make_unique<juce::AudioParameterInt>("midiCcDelayAdjustBwd", "MIDI CC Delay Adjust Bwd", 0, 127, 0));
     layout.add(std::make_unique<juce::AudioParameterInt>("delayAdjustCcStep", "Delay Adjust CC Step", 1, 128, 1));
