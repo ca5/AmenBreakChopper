@@ -336,23 +336,44 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
                     mLastSoftResetCcValue = controllerValue;
                 }
 
-                const int ccDelayAdjustFwd = (int)mValueTreeState.getRawParameterValue("midiCcDelayAdjustFwd")->load();
-                if (controllerNumber == ccDelayAdjustFwd && controllerValue >= 65 && mLastDelayAdjustFwdCcValue < 65)
+                const int ccFwd = (int)mValueTreeState.getRawParameterValue("midiCcDelayAdjustFwd")->load();
+                const int ccBwd = (int)mValueTreeState.getRawParameterValue("midiCcDelayAdjustBwd")->load();
+
+                // Detect press events (rising edge) for the current message
+                bool fwdJustPressed = (controllerNumber == ccFwd && controllerValue >= 65 && mLastDelayAdjustFwdCcValue < 65);
+                bool bwdJustPressed = (controllerNumber == ccBwd && controllerValue >= 65 && mLastDelayAdjustBwdCcValue < 65);
+
+                // Determine the "held" state of the *other* button (from before this message)
+                bool bwdWasHeld = (mLastDelayAdjustBwdCcValue >= 65);
+                bool fwdWasHeld = (mLastDelayAdjustFwdCcValue >= 65);
+
+                // Check for reset condition: one button was just pressed while the other was already held.
+                if ((fwdJustPressed && bwdWasHeld) || (bwdJustPressed && fwdWasHeld))
+                {
+                    auto* param = static_cast<juce::AudioParameterInt*>(mValueTreeState.getParameter("delayAdjust"));
+                    param->operator=(0);
+                }
+                // If no reset, handle single press actions.
+                else if (fwdJustPressed)
                 {
                     auto* stepParam = static_cast<juce::AudioParameterInt*>(mValueTreeState.getParameter("delayAdjustCcStep"));
                     auto* param = static_cast<juce::AudioParameterInt*>(mValueTreeState.getParameter("delayAdjust"));
                     param->operator=(param->get() + stepParam->get());
                 }
-                mLastDelayAdjustFwdCcValue = controllerValue;
-
-                const int ccDelayAdjustBwd = (int)mValueTreeState.getRawParameterValue("midiCcDelayAdjustBwd")->load();
-                if (controllerNumber == ccDelayAdjustBwd && controllerValue >= 65 && mLastDelayAdjustBwdCcValue < 65)
+                else if (bwdJustPressed)
                 {
                     auto* stepParam = static_cast<juce::AudioParameterInt*>(mValueTreeState.getParameter("delayAdjustCcStep"));
                     auto* param = static_cast<juce::AudioParameterInt*>(mValueTreeState.getParameter("delayAdjust"));
                     param->operator=(param->get() - stepParam->get());
                 }
-                mLastDelayAdjustBwdCcValue = controllerValue;
+
+                // Finally, update the 'last value' state keepers for the next message/block.
+                if (controllerNumber == ccFwd) {
+                    mLastDelayAdjustFwdCcValue = controllerValue;
+                }
+                if (controllerNumber == ccBwd) {
+                    mLastDelayAdjustBwdCcValue = controllerValue;
+                }
             }
         }
     }
