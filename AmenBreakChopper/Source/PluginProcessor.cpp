@@ -426,6 +426,7 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
         {
             mNoteSequencePosition = mSequencePosition; // Sync Note-Seq to Main-Seq
             mValueTreeState.getParameter("delayTime")->setValueNotifyingHost(0.0f); // Reset DelayTime
+            mNewNoteReceived = false;
             mSequenceResetQueued = false;
         }
 
