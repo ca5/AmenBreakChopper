@@ -53,6 +53,12 @@ juce::AudioProcessorValueTreeState::ParameterLayout AmenBreakChopperAudioProcess
     layout.add(std::make_unique<juce::AudioParameterInt>("midiCcSoftReset", "MIDI CC Soft Reset", 0, 127, 97));
     layout.add(std::make_unique<juce::AudioParameterChoice>("midiCcSoftResetMode", "Soft Reset Mode", ccModes, 1));
 
+    // Delay adjustment
+    layout.add(std::make_unique<juce::AudioParameterInt>("delayAdjust", "Delay Adjust", -4096, 4096, 0));
+    layout.add(std::make_unique<juce::AudioParameterInt>("midiCcDelayAdjustFwd", "MIDI CC Delay Adjust Fwd", 0, 127, 0));
+    layout.add(std::make_unique<juce::AudioParameterInt>("midiCcDelayAdjustBwd", "MIDI CC Delay Adjust Bwd", 0, 127, 0));
+    layout.add(std::make_unique<juce::AudioParameterInt>("delayAdjustCcStep", "Delay Adjust CC Step", 1, 128, 1));
+
     return layout;
 }
 
@@ -186,6 +192,9 @@ void AmenBreakChopperAudioProcessor::prepareToPlay (double sampleRate, int sampl
     mLastSeqResetCcValue = 0;
     mLastTimerResetCcValue = 0;
     mLastSoftResetCcValue = 0;
+    mLastDelayAdjustFwdCcValue = 0;
+    mLastDelayAdjustBwdCcValue = 0;
+    mLastDelayAdjust = 0;
 }
 
 void AmenBreakChopperAudioProcessor::releaseResources()
@@ -326,6 +335,45 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
                         mSoftResetQueued = true;
                     mLastSoftResetCcValue = controllerValue;
                 }
+
+                const int ccFwd = (int)mValueTreeState.getRawParameterValue("midiCcDelayAdjustFwd")->load();
+                const int ccBwd = (int)mValueTreeState.getRawParameterValue("midiCcDelayAdjustBwd")->load();
+
+                // Detect press events (rising edge) for the current message
+                bool fwdJustPressed = (controllerNumber == ccFwd && controllerValue >= 65 && mLastDelayAdjustFwdCcValue < 65);
+                bool bwdJustPressed = (controllerNumber == ccBwd && controllerValue >= 65 && mLastDelayAdjustBwdCcValue < 65);
+
+                // Determine the "held" state of the *other* button (from before this message)
+                bool bwdWasHeld = (mLastDelayAdjustBwdCcValue >= 65);
+                bool fwdWasHeld = (mLastDelayAdjustFwdCcValue >= 65);
+
+                // Check for reset condition: one button was just pressed while the other was already held.
+                if ((fwdJustPressed && bwdWasHeld) || (bwdJustPressed && fwdWasHeld))
+                {
+                    auto* param = static_cast<juce::AudioParameterInt*>(mValueTreeState.getParameter("delayAdjust"));
+                    param->operator=(0);
+                }
+                // If no reset, handle single press actions.
+                else if (fwdJustPressed)
+                {
+                    auto* stepParam = static_cast<juce::AudioParameterInt*>(mValueTreeState.getParameter("delayAdjustCcStep"));
+                    auto* param = static_cast<juce::AudioParameterInt*>(mValueTreeState.getParameter("delayAdjust"));
+                    param->operator=(param->get() + stepParam->get());
+                }
+                else if (bwdJustPressed)
+                {
+                    auto* stepParam = static_cast<juce::AudioParameterInt*>(mValueTreeState.getParameter("delayAdjustCcStep"));
+                    auto* param = static_cast<juce::AudioParameterInt*>(mValueTreeState.getParameter("delayAdjust"));
+                    param->operator=(param->get() - stepParam->get());
+                }
+
+                // Finally, update the 'last value' state keepers for the next message/block.
+                if (controllerNumber == ccFwd) {
+                    mLastDelayAdjustFwdCcValue = controllerValue;
+                }
+                if (controllerNumber == ccBwd) {
+                    mLastDelayAdjustBwdCcValue = controllerValue;
+                }
             }
         }
     }
@@ -334,6 +382,18 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     // --- Sequencer Tick Logic (Block-based) ---
     const int bufferLength = buffer.getNumSamples();
     double ppqAtEndOfBlock = ppqAtStartOfBlock + (bufferLength * ppqPerSample);
+
+    // --- Apply delayAdjust to sequencer phase ---
+    auto* delayAdjustParam = static_cast<juce::AudioParameterInt*>(mValueTreeState.getParameter("delayAdjust"));
+    const int currentDelayAdjust = delayAdjustParam->get();
+    const int deltaDelayAdjust = currentDelayAdjust - mLastDelayAdjust;
+
+    if (deltaDelayAdjust != 0)
+    {
+        const double deltaPpq = deltaDelayAdjust * ppqPerSample;
+        mNextEighthNotePpq += deltaPpq;
+    }
+    mLastDelayAdjust = currentDelayAdjust;
 
     while (mNextEighthNotePpq < ppqAtEndOfBlock)
     {
@@ -355,6 +415,11 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
             mTimerResetQueued = false;
             // Also reset PPQ tracking to the current tick
             mNextEighthNotePpq = std::ceil(ppqAtStartOfBlock * 2.0) / 2.0;
+
+            // Apply the current delayAdjust as a phase offset on reset
+            const int currentDelayAdjust = static_cast<juce::AudioParameterInt*>(mValueTreeState.getParameter("delayAdjust"))->get();
+            mNextEighthNotePpq += currentDelayAdjust * ppqPerSample;
+            mLastDelayAdjust = currentDelayAdjust;
         }
 
         if (mSequenceResetQueued)

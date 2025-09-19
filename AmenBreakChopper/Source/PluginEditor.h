@@ -87,5 +87,23 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> mMidiCcTimerResetModeAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> mMidiCcSoftResetModeAttachment;
 
+    // Delay Adjustment controls
+    juce::Label mDelayAdjustLabel;
+    juce::Slider mDelayAdjustSlider;
+    juce::TextButton mDelayAdjustFwdButton{ ">" };
+    juce::TextButton mDelayAdjustBwdButton{ "<" };
+    juce::Label mDelayAdjustCcLabel;
+    juce::Label mDelayAdjustFwdCcLabel;
+    juce::Slider mDelayAdjustFwdCcSlider;
+    juce::Label mDelayAdjustBwdCcLabel;
+    juce::Slider mDelayAdjustBwdCcSlider;
+
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mDelayAdjustAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mDelayAdjustFwdCcAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mDelayAdjustBwdCcAttachment;
+    juce::Label mDelayAdjustCcStepLabel;
+    juce::Slider mDelayAdjustCcStepSlider;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mDelayAdjustCcStepAttachment;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AmenBreakChopperAudioProcessorEditor)
 };
