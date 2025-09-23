@@ -253,39 +253,9 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
-    // --- Get transport state from host ---
-    juce::AudioPlayHead* playHead = getPlayHead();
-    juce::AudioPlayHead::PositionInfo positionInfo;
-    if (playHead != nullptr)
-        positionInfo = playHead->getPosition().orFallback(positionInfo);
-
-    if (!positionInfo.getIsPlaying())
-    {
-        // If transport is not playing, do nothing (pass audio through).
-        return;
-    }
-
-    // --- Get musical time information ---
-    const double sampleRate = getSampleRate();
-    const double bpm = positionInfo.getBpm().orFallback(120.0);
-    const double ppqAtStartOfBlock = positionInfo.getPpqPosition().orFallback(0.0);
-    const double ppqPerSample = bpm / (60.0 * sampleRate);
-
-    // --- Handle transport jumps or looping ---
-    // If transport loops or jumps backwards, reset the next note position to align with the grid.
-    if (positionInfo.getIsLooping() || (ppqAtStartOfBlock < mNextEighthNotePpq - 0.5))
-    {
-        // Find the first 8th note position at or after the start of this block.
-        mNextEighthNotePpq = std::ceil(ppqAtStartOfBlock * 2.0) / 2.0;
-    }
-
-    // --- Get current parameter values ---
-    auto* modeParam = mValueTreeState.getRawParameterValue("controlMode");
-    const bool isInternalMode = modeParam->load() < 0.5f;
+    // --- Process incoming MIDI messages ---
     const int midiInChannel = (int)mValueTreeState.getRawParameterValue("midiInputChannel")->load();
     const int midiOutChannel = (int)mValueTreeState.getRawParameterValue("midiOutputChannel")->load();
-
-    // --- Process incoming MIDI messages ---
     juce::MidiBuffer processedMidi; // Create a new buffer for our generated notes
     for (const auto metadata : midiMessages)
     {
@@ -379,6 +349,66 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     }
     midiMessages.clear(); // Clear the incoming buffer
 
+    // --- Get transport state from host ---
+    juce::AudioPlayHead* playHead = getPlayHead();
+    juce::AudioPlayHead::PositionInfo positionInfo;
+    if (playHead != nullptr)
+        positionInfo = playHead->getPosition().orFallback(positionInfo);
+
+    // On reset, turn off any hanging notes first
+    if (mTimerResetQueued || mSoftResetQueued)
+    {
+        if (mLastNote1 >= 0) processedMidi.addEvent(juce::MidiMessage::noteOff(midiOutChannel, mLastNote1), 0);
+        if (mLastNote2 >= 0) processedMidi.addEvent(juce::MidiMessage::noteOff(midiOutChannel, mLastNote2), 0);
+        mLastNote1 = -1;
+        mLastNote2 = -1;
+    }
+
+    if (mTimerResetQueued)
+    {
+        mSequencePosition = 0;
+        mNoteSequencePosition = 0;
+        mValueTreeState.getParameter("sequencePosition")->setValueNotifyingHost(0.0f);
+        mValueTreeState.getParameter("noteSequencePosition")->setValueNotifyingHost(0.0f);
+
+        if (positionInfo.getIsPlaying())
+        {
+            const double ppqAtStartOfBlock = positionInfo.getPpqPosition().orFallback(0.0);
+            const double bpm = positionInfo.getBpm().orFallback(120.0);
+            const double ppqPerSample = bpm / (60.0 * getSampleRate());
+
+            // Also reset PPQ tracking to the current tick
+            mNextEighthNotePpq = std::ceil(ppqAtStartOfBlock * 2.0) / 2.0;
+
+            // Apply the current delayAdjust as a phase offset on reset
+            const int currentDelayAdjust = static_cast<juce::AudioParameterInt*>(mValueTreeState.getParameter("delayAdjust"))->get();
+            mNextEighthNotePpq += currentDelayAdjust * ppqPerSample;
+            mLastDelayAdjust = currentDelayAdjust;
+        }
+        mTimerResetQueued = false;
+    }
+
+    if (!positionInfo.getIsPlaying())
+    {
+        midiMessages.swapWith(processedMidi);
+        // If transport is not playing, do nothing (pass audio through).
+        return;
+    }
+
+    // --- Get musical time information ---
+    const double sampleRate = getSampleRate();
+    const double bpm = positionInfo.getBpm().orFallback(120.0);
+    const double ppqAtStartOfBlock = positionInfo.getPpqPosition().orFallback(0.0);
+    const double ppqPerSample = bpm / (60.0 * sampleRate);
+
+    // --- Handle transport jumps or looping ---
+    // If transport loops or jumps backwards, reset the next note position to align with the grid.
+    if (positionInfo.getIsLooping() || (ppqAtStartOfBlock < mNextEighthNotePpq - 0.5))
+    {
+        // Find the first 8th note position at or after the start of this block.
+        mNextEighthNotePpq = std::ceil(ppqAtStartOfBlock * 2.0) / 2.0;
+    }
+
     // --- Sequencer Tick Logic (Block-based) ---
     const int bufferLength = buffer.getNumSamples();
     double ppqAtEndOfBlock = ppqAtStartOfBlock + (bufferLength * ppqPerSample);
@@ -398,29 +428,6 @@ void AmenBreakChopperAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     while (mNextEighthNotePpq < ppqAtEndOfBlock)
     {
         const int tickSample = static_cast<int>((mNextEighthNotePpq - ppqAtStartOfBlock) / ppqPerSample);
-
-        // On reset, turn off any hanging notes first
-        if (mTimerResetQueued || mSoftResetQueued)
-        {
-            if (mLastNote1 >= 0) processedMidi.addEvent(juce::MidiMessage::noteOff(midiOutChannel, mLastNote1), tickSample);
-            if (mLastNote2 >= 0) processedMidi.addEvent(juce::MidiMessage::noteOff(midiOutChannel, mLastNote2), tickSample);
-            mLastNote1 = -1;
-            mLastNote2 = -1;
-        }
-
-        if (mTimerResetQueued)
-        {
-            mSequencePosition = 0;
-            mNoteSequencePosition = 0;
-            mTimerResetQueued = false;
-            // Also reset PPQ tracking to the current tick
-            mNextEighthNotePpq = std::ceil(ppqAtStartOfBlock * 2.0) / 2.0;
-
-            // Apply the current delayAdjust as a phase offset on reset
-            const int currentDelayAdjust = static_cast<juce::AudioParameterInt*>(mValueTreeState.getParameter("delayAdjust"))->get();
-            mNextEighthNotePpq += currentDelayAdjust * ppqPerSample;
-            mLastDelayAdjust = currentDelayAdjust;
-        }
 
         if (mSequenceResetQueued)
         {
