@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <JUCERPROJECT id="GUwkNr" name="AmenBreakChopper" projectType="audioplug" useAppConfig="0"
-              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" version="0.2.2"
+              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" version="0.2.3"
               pluginFormats="buildAU,buildAUv3,buildStandalone,buildVST3" pluginCharacteristicsValue="pluginEditorRequiresKeys,pluginProducesMidiOut,pluginWantsAudioInput,pluginWantsMidiIn"
               pluginManufacturer="Ca5" bundleIdentifier="me.ca5.AmenBreakChopper"
               companyWebsite="ca5.me" pluginVST3Category="Fx" projectLineFeed="&#10;">
@@ -41,19 +41,19 @@
         <CONFIGURATION isDebug="0" name="Release" targetName="ABC"/>
       </CONFIGURATIONS>
       <MODULEPATHS>
-        <MODULEPATH id="juce_audio_basics" path="../../external/JUCE/modules"/>
-        <MODULEPATH id="juce_audio_devices" path="../../external/JUCE/modules"/>
-        <MODULEPATH id="juce_audio_formats" path="../../external/JUCE/modules"/>
-        <MODULEPATH id="juce_audio_plugin_client" path="../../external/JUCE/modules"/>
-        <MODULEPATH id="juce_audio_processors" path="../../external/JUCE/modules"/>
-        <MODULEPATH id="juce_audio_utils" path="../../external/JUCE/modules"/>
-        <MODULEPATH id="juce_core" path="../../external/JUCE/modules"/>
-        <MODULEPATH id="juce_data_structures" path="../../external/JUCE/modules"/>
-        <MODULEPATH id="juce_events" path="../../external/JUCE/modules"/>
-        <MODULEPATH id="juce_graphics" path="../../external/JUCE/modules"/>
-        <MODULEPATH id="juce_gui_basics" path="../../external/JUCE/modules"/>
-        <MODULEPATH id="juce_gui_extra" path="../../external/JUCE/modules"/>
-        <MODULEPATH id="juce_osc" path="../../external/JUCE/modules"/>
+        <MODULEPATH id="juce_audio_basics" path="../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_devices" path="../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_formats" path="../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_plugin_client" path="../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_processors" path="../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_utils" path="../../JUCE/modules"/>
+        <MODULEPATH id="juce_core" path="../../JUCE/modules"/>
+        <MODULEPATH id="juce_data_structures" path="../../JUCE/modules"/>
+        <MODULEPATH id="juce_events" path="../../JUCE/modules"/>
+        <MODULEPATH id="juce_graphics" path="../../JUCE/modules"/>
+        <MODULEPATH id="juce_gui_basics" path="../../JUCE/modules"/>
+        <MODULEPATH id="juce_gui_extra" path="../../JUCE/modules"/>
+        <MODULEPATH id="juce_osc" path="../../JUCE/modules"/>
       </MODULEPATHS>
     </XCODE_MAC>
     <XCODE_IPHONE targetFolder="Builds/iOS" customPList="&lt;plist&gt;&lt;dict&gt;&#10; &lt;key&gt;NSMicrophoneUsageDescription&lt;/key&gt;&#10;&lt;string&gt;This app uses the microphone to process live audio with its delay effect.&lt;/string&gt;&#10;&lt;/dict&gt;&lt;/plist&gt;"
@@ -63,19 +63,19 @@
         <CONFIGURATION isDebug="0" name="Release" targetName="ABC"/>
       </CONFIGURATIONS>
       <MODULEPATHS>
-        <MODULEPATH id="juce_audio_basics" path="/Users/ca5/project/external/JUCE/modules"/>
-        <MODULEPATH id="juce_audio_devices" path="/Users/ca5/project/external/JUCE/modules"/>
-        <MODULEPATH id="juce_audio_formats" path="/Users/ca5/project/external/JUCE/modules"/>
-        <MODULEPATH id="juce_audio_plugin_client" path="/Users/ca5/project/external/JUCE/modules"/>
-        <MODULEPATH id="juce_audio_processors" path="/Users/ca5/project/external/JUCE/modules"/>
-        <MODULEPATH id="juce_audio_utils" path="/Users/ca5/project/external/JUCE/modules"/>
-        <MODULEPATH id="juce_core" path="/Users/ca5/project/external/JUCE/modules"/>
-        <MODULEPATH id="juce_data_structures" path="/Users/ca5/project/external/JUCE/modules"/>
-        <MODULEPATH id="juce_events" path="/Users/ca5/project/external/JUCE/modules"/>
-        <MODULEPATH id="juce_graphics" path="/Users/ca5/project/external/JUCE/modules"/>
-        <MODULEPATH id="juce_gui_basics" path="/Users/ca5/project/external/JUCE/modules"/>
-        <MODULEPATH id="juce_gui_extra" path="/Users/ca5/project/external/JUCE/modules"/>
-        <MODULEPATH id="juce_osc" path="../../external/JUCE/modules"/>
+        <MODULEPATH id="juce_audio_basics" path="../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_devices" path="../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_formats" path="../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_plugin_client" path="../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_processors" path="../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_utils" path="../../JUCE/modules"/>
+        <MODULEPATH id="juce_core" path="../../JUCE/modules"/>
+        <MODULEPATH id="juce_data_structures" path="../../JUCE/modules"/>
+        <MODULEPATH id="juce_events" path="../../JUCE/modules"/>
+        <MODULEPATH id="juce_graphics" path="../../JUCE/modules"/>
+        <MODULEPATH id="juce_gui_basics" path="../../JUCE/modules"/>
+        <MODULEPATH id="juce_gui_extra" path="../../JUCE/modules"/>
+        <MODULEPATH id="juce_osc" path="../../JUCE/modules"/>
       </MODULEPATHS>
     </XCODE_IPHONE>
   </EXPORTFORMATS>
