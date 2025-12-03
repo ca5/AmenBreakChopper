@@ -9,12 +9,13 @@ title: AmenBreakChopper Documentation
 AmenBreakChopperは、入力された音声をBPMに同期したディレイで再生するビートチョッパー・エフェクトです。
 JUCEフレームワークを使用して開発されたオーディオプラグインで、DelayTimeパラメータはMIDIノートによってコントロール可能です。また、OSCやMIDI CCによる詳細なコントロールにも対応しています。
 
-## インストール方法 (macOS)
+## インストール方法
 
-1.  Xcodeでプラグインをビルドします。
-2.  Xcodeの「Products」フォルダからビルドされた `.component` ファイルをFinderで表示します。
-3.  そのファイルを `/Library/Audio/Plug-Ins/Components/` にコピーし、既存のファイルを上書きします。
-4.  DAWを再起動してプラグインを読み込みます。
+配布されるインストーラーやファイルを使用して、お使いの環境にプラグインをインストールしてください。
+現在は以下の形式に対応予定です。
+
+*   iOS (AUv3, Standalone)
+*   macOS / Windows (VST3)
 
 ## 基本的な使い方
 
