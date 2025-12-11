@@ -201,7 +201,7 @@ void AmenBreakChopperAudioProcessorEditor::resized()
     const int controlWidth = getWidth() - labelWidth - 20;
     const int rowHeight = 25;
     const int sliderHeight = 50;
-    int y = 10;
+    int y = 35;
 
     // === Live Status ===
     mStatusLabel.setBounds(10, y, getWidth() - 20, rowHeight);
