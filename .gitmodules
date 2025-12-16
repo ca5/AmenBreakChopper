@@ -1,6 +1,3 @@
 [submodule "JUCE"]
 	path = JUCE
 	url = https://github.com/juce-framework/JUCE.git
-[submodule "docs/AmenBreakChopper_doc"]
-	path = docs/AmenBreakChopper_doc
-	url = https://github.com/ca5/AmenBreakChopper_doc.git
