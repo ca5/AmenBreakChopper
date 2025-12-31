@@ -6,332 +6,217 @@
   ==============================================================================
 */
 
-#include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "PluginProcessor.h"
 
 //==============================================================================
-AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor (AmenBreakChopperAudioProcessor& p)
-    : AudioProcessorEditor (&p), audioProcessor (p)
-{
-    // === Live Status ===
-    mStatusLabel.setText("Live Status", juce::dontSendNotification);
-    mStatusLabel.setFont(juce::Font(16.0f, juce::Font::bold));
-    addAndMakeVisible(mStatusLabel);
+AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor(
+    AmenBreakChopperAudioProcessor &p)
+    : AudioProcessorEditor(&p), audioProcessor(p),
+      webView(
+          juce::WebBrowserComponent::Options()
+#if JUCE_WINDOWS
+              .withBackend(
+                  juce::WebBrowserComponent::Options::Backend::webview2)
+              .withWinWebView2Options(
+                  juce::WebBrowserComponent::Options::WinWebView2Options()
+                      .withUserDataFolder(juce::File::getSpecialLocation(
+                          juce::File::tempDirectory)))
+#endif
+              .withResourceProvider(
+                  [this](const juce::String &url)
+                      -> std::optional<juce::WebBrowserComponent::Resource> {
+                    // 1. Determine relative path from URL
+                    juce::String resourcePath =
+                        (url == "/" || url == "") ? "index.html" : url;
+                    if (resourcePath.startsWithChar('/'))
+                      resourcePath = resourcePath.substring(1);
 
-    mDelayTimeLabel.setText("Delay Time", juce::dontSendNotification);
-    addAndMakeVisible(mDelayTimeLabel);
-    mSequencePositionLabel.setText("Sequence Position", juce::dontSendNotification);
-    addAndMakeVisible(mSequencePositionLabel);
-    mNoteSequencePositionLabel.setText("Note Sequence Position", juce::dontSendNotification);
-    addAndMakeVisible(mNoteSequencePositionLabel);
+                    juce::Logger::writeToLog("WebView Request: " + url +
+                                             " -> " + resourcePath);
 
-    mDelayTimeSlider.setSliderStyle(juce::Slider::SliderStyle::LinearHorizontal);
-    mDelayTimeSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, true, 100, 25);
-    addAndMakeVisible(mDelayTimeSlider);
+                    // 2. Locate the file on disk
+                    auto exe = juce::File::getSpecialLocation(
+                        juce::File::currentApplicationFile);
+                    juce::File bundleRoot;
 
-    mSequencePositionSlider.setSliderStyle(juce::Slider::SliderStyle::LinearHorizontal);
-    mSequencePositionSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, true, 100, 25);
-    mSequencePositionSlider.setInterceptsMouseClicks(false, false);
-    addAndMakeVisible(mSequencePositionSlider);
+                    if (exe.isDirectory())
+                      bundleRoot =
+                          exe; // It's the .app bundle itself (iOS/macOS)
+                    else
+                      bundleRoot =
+                          exe.getParentDirectory(); // It's the executable
+                                                    // binary
 
-    mNoteSequencePositionSlider.setSliderStyle(juce::Slider::SliderStyle::LinearHorizontal);
-    mNoteSequencePositionSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, true, 100, 25);
-    mNoteSequencePositionSlider.setInterceptsMouseClicks(false, false);
-    addAndMakeVisible(mNoteSequencePositionSlider);
+                    juce::Logger::writeToLog("Bundle Root: " +
+                                             bundleRoot.getFullPathName());
 
-    // === Control Mode ===
-    mControlModeLabel.setText("Control Mode", juce::dontSendNotification);
-    addAndMakeVisible(mControlModeLabel);
-    addAndMakeVisible(mControlModeComboBox);
-    mControlModeComboBox.addItemList(audioProcessor.getValueTreeState().getParameter("controlMode")->getAllValueStrings(), 1);
+                    juce::Array<juce::File> candidates;
 
-    // === Attachments ===
-    mDelayTimeAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "delayTime", mDelayTimeSlider));
-    mSequencePositionAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "sequencePosition", mSequencePositionSlider));
-    mNoteSequencePositionAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "noteSequencePosition", mNoteSequencePositionSlider));
-    mControlModeAttachment.reset(new juce::AudioProcessorValueTreeState::ComboBoxAttachment(audioProcessor.getValueTreeState(), "controlMode", mControlModeComboBox));
+                    // A: iOS Bundle Root / Flattened Structure Check
+                    // Case 1: Path exactly as requested (e.g.
+                    // ABC.app/assets/index.js or ABC.app/index.html)
+                    candidates.add(bundleRoot.getChildFile(resourcePath));
 
-    // === MIDI Configuration ===
-    mMidiConfigLabel.setText("MIDI Configuration", juce::dontSendNotification);
-    mMidiConfigLabel.setFont(juce::Font(16.0f, juce::Font::bold));
-    addAndMakeVisible(mMidiConfigLabel);
+                    // Case 2: Flattened assets (Common Xcode "Create groups"
+                    // mistake) Request: assets/index.js -> Look for:
+                    // ABC.app/index.js
+                    candidates.add(
+                        bundleRoot.getChildFile(resourcePath.substring(
+                            resourcePath.lastIndexOfChar('/') + 1)));
 
-    mMidiInputChannelLabel.setText("MIDI In Channel", juce::dontSendNotification);
-    addAndMakeVisible(mMidiInputChannelLabel);
-    mMidiOutputChannelLabel.setText("MIDI Out Channel", juce::dontSendNotification);
-    addAndMakeVisible(mMidiOutputChannelLabel);
+                    // B: iOS Bundle Root / dist folder (If 'dist' folder
+                    // reference was used)
+                    candidates.add(bundleRoot.getChildFile("dist").getChildFile(
+                        resourcePath));
+                    // Case B2: Flattened inside dist
+                    candidates.add(bundleRoot.getChildFile("dist").getChildFile(
+                        resourcePath.substring(
+                            resourcePath.lastIndexOfChar('/') + 1)));
 
-    mMidiInputChannelSlider.setSliderStyle(juce::Slider::SliderStyle::IncDecButtons);
-    mMidiInputChannelSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, true, 50, 25);
-    addAndMakeVisible(mMidiInputChannelSlider);
-    mMidiOutputChannelSlider.setSliderStyle(juce::Slider::SliderStyle::IncDecButtons);
-    mMidiOutputChannelSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, true, 50, 25);
-    addAndMakeVisible(mMidiOutputChannelSlider);
+                    // C: macOS Resources
+                    if (bundleRoot.getFileName() == "MacOS") {
+                      auto resources =
+                          bundleRoot.getParentDirectory().getChildFile(
+                              "Resources");
+                      candidates.add(
+                          resources.getChildFile("dist").getChildFile(
+                              resourcePath));
+                      candidates.add(resources.getChildFile(resourcePath));
+                    }
 
-    mMidiCcSeqResetLabel.setText("Sequence Reset CC", juce::dontSendNotification);
-    addAndMakeVisible(mMidiCcSeqResetLabel);
-    mMidiCcTimerResetLabel.setText("Timer Reset CC", juce::dontSendNotification);
-    addAndMakeVisible(mMidiCcTimerResetLabel);
-    mMidiCcSoftResetLabel.setText("Soft Reset CC", juce::dontSendNotification);
-    addAndMakeVisible(mMidiCcSoftResetLabel);
+                    juce::File resourceFile;
+                    for (const auto &c : candidates) {
+                      if (c.existsAsFile()) {
+                        resourceFile = c;
+                        break;
+                      }
+                    }
 
-    mMidiCcSeqResetSlider.setSliderStyle(juce::Slider::SliderStyle::IncDecButtons);
-    mMidiCcSeqResetSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, true, 50, 25);
-    addAndMakeVisible(mMidiCcSeqResetSlider);
-    mMidiCcTimerResetSlider.setSliderStyle(juce::Slider::SliderStyle::IncDecButtons);
-    mMidiCcTimerResetSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, true, 50, 25);
-    addAndMakeVisible(mMidiCcTimerResetSlider);
-    mMidiCcSoftResetSlider.setSliderStyle(juce::Slider::SliderStyle::IncDecButtons);
-    mMidiCcSoftResetSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, true, 50, 25);
-    addAndMakeVisible(mMidiCcSoftResetSlider);
+                    if (resourceFile.existsAsFile()) {
+                      juce::Logger::writeToLog("Found resource: " +
+                                               resourceFile.getFullPathName());
 
-    mMidiCcSeqResetModeLabel.setText("Seq Reset Mode", juce::dontSendNotification);
-    addAndMakeVisible(mMidiCcSeqResetModeLabel);
-    addAndMakeVisible(mMidiCcSeqResetModeComboBox);
-    mMidiCcSeqResetModeComboBox.addItemList(audioProcessor.getValueTreeState().getParameter("midiCcSeqResetMode")->getAllValueStrings(), 1);
+                      auto extension = resourceFile.getFileExtension();
+                      juce::String mimeType = "application/octet-stream";
 
-    mMidiCcTimerResetModeLabel.setText("Timer Reset Mode", juce::dontSendNotification);
-    addAndMakeVisible(mMidiCcTimerResetModeLabel);
-    addAndMakeVisible(mMidiCcTimerResetModeComboBox);
-    mMidiCcTimerResetModeComboBox.addItemList(audioProcessor.getValueTreeState().getParameter("midiCcTimerResetMode")->getAllValueStrings(), 1);
+                      if (extension == ".html")
+                        mimeType = "text/html";
+                      else if (extension == ".js")
+                        mimeType = "application/javascript";
+                      else if (extension == ".css")
+                        mimeType = "text/css";
+                      else if (extension == ".png")
+                        mimeType = "image/png";
+                      else if (extension == ".svg")
+                        mimeType = "image/svg+xml";
+                      else if (extension == ".json")
+                        mimeType = "application/json";
 
-    mMidiCcSoftResetModeLabel.setText("Soft Reset Mode", juce::dontSendNotification);
-    addAndMakeVisible(mMidiCcSoftResetModeLabel);
-    addAndMakeVisible(mMidiCcSoftResetModeComboBox);
-    mMidiCcSoftResetModeComboBox.addItemList(audioProcessor.getValueTreeState().getParameter("midiCcSoftResetMode")->getAllValueStrings(), 1);
+                      juce::MemoryBlock mb;
+                      resourceFile.loadFileAsData(mb);
 
-    mMidiInputChannelAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "midiInputChannel", mMidiInputChannelSlider));
-    mMidiOutputChannelAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "midiOutputChannel", mMidiOutputChannelSlider));
-    mMidiCcSeqResetAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "midiCcSeqReset", mMidiCcSeqResetSlider));
-    mMidiCcTimerResetAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "midiCcTimerReset", mMidiCcTimerResetSlider));
-    mMidiCcSoftResetAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "midiCcSoftReset", mMidiCcSoftResetSlider));
-    mMidiCcSeqResetModeAttachment.reset(new juce::AudioProcessorValueTreeState::ComboBoxAttachment(audioProcessor.getValueTreeState(), "midiCcSeqResetMode", mMidiCcSeqResetModeComboBox));
-    mMidiCcTimerResetModeAttachment.reset(new juce::AudioProcessorValueTreeState::ComboBoxAttachment(audioProcessor.getValueTreeState(), "midiCcTimerResetMode", mMidiCcTimerResetModeComboBox));
-    mMidiCcSoftResetModeAttachment.reset(new juce::AudioProcessorValueTreeState::ComboBoxAttachment(audioProcessor.getValueTreeState(), "midiCcSoftResetMode", mMidiCcSoftResetModeComboBox));
+                      std::vector<std::byte> data(mb.getSize());
+                      memcpy(data.data(), mb.getData(), mb.getSize());
 
+                      return juce::WebBrowserComponent::Resource{
+                          std::move(data), mimeType};
+                    } else {
+                      juce::Logger::writeToLog("Resource NOT found for: " +
+                                               resourcePath);
+                      for (const auto &c : candidates)
+                        juce::Logger::writeToLog("Checked: " +
+                                                 c.getFullPathName());
+                    }
 
-    // === OSC Configuration ===
-    mOscConfigLabel.setText("OSC Configuration", juce::dontSendNotification);
-    mOscConfigLabel.setFont(juce::Font(16.0f, juce::Font::bold));
-    addAndMakeVisible(mOscConfigLabel);
-    mOscHostAddressLabel.setText("Host IP Address", juce::dontSendNotification);
-    addAndMakeVisible(mOscHostAddressLabel);
-    mOscSendPortLabel.setText("Send Port", juce::dontSendNotification);
-    addAndMakeVisible(mOscSendPortLabel);
-    mOscReceivePortLabel.setText("Receive Port", juce::dontSendNotification);
-    addAndMakeVisible(mOscReceivePortLabel);
+                    return std::nullopt;
+                  })
+              .withNativeFunction(
+                  "sendParameterValue",
+                  [this](const juce::Array<juce::var> &args,
+                         juce::WebBrowserComponent::NativeFunctionCompletion
+                             completion) {
+                    if (args.size() == 2 && args[0].isString()) {
+                      juce::String paramId = args[0].toString();
+                      float value = static_cast<float>(args[1]);
 
-    mOscHostAddressEditor.setText(audioProcessor.getValueTreeState().state.getProperty("oscHostAddress").toString());
-    mOscHostAddressEditor.addListener(this);
-    addAndMakeVisible(mOscHostAddressEditor);
-    mOscSendPortSlider.setSliderStyle(juce::Slider::SliderStyle::IncDecButtons);
-    mOscSendPortSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, true, 70, 25);
-    addAndMakeVisible(mOscSendPortSlider);
-    mOscReceivePortSlider.setSliderStyle(juce::Slider::SliderStyle::IncDecButtons);
-    mOscReceivePortSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, true, 70, 25);
-    addAndMakeVisible(mOscReceivePortSlider);
+                      if (auto *param =
+                              audioProcessor.getValueTreeState().getParameter(
+                                  paramId)) {
+                        // For now, assume value is normalized [0, 1] from UI
+                        param->setValueNotifyingHost(value);
+                      }
+                    }
+                    completion(juce::var());
+                  })
+              .withNativeFunction(
+                  "requestInitialState",
+                  [this](const juce::Array<juce::var> &,
+                         juce::WebBrowserComponent::NativeFunctionCompletion
+                             completion) {
+                    syncAllParametersToFrontend();
+                    completion(juce::var());
+                  })) {
+  addAndMakeVisible(webView);
 
-    mOscSendPortAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "oscSendPort", mOscSendPortSlider));
-    mOscReceivePortAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "oscReceivePort", mOscReceivePortSlider));
+  setSize(800, 600);
 
-    // === Delay Adjustment ===
-    mDelayAdjustLabel.setText("Delay Adjust (samples)", juce::dontSendNotification);
-    addAndMakeVisible(mDelayAdjustLabel);
-    mDelayAdjustSlider.setSliderStyle(juce::Slider::SliderStyle::LinearHorizontal);
-    mDelayAdjustSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 50, 25);
-    addAndMakeVisible(mDelayAdjustSlider);
+  // Load from local ResourceProvider
+  webView.goToURL(juce::WebBrowserComponent::getResourceProviderRoot());
 
-    addAndMakeVisible(mDelayAdjustFwdButton);
-    addAndMakeVisible(mDelayAdjustBwdButton);
-    mDelayAdjustFwdButton.onClick = [this] {
-        mDelayAdjustSlider.setValue(mDelayAdjustSlider.getValue() + 1);
-    };
-    mDelayAdjustBwdButton.onClick = [this] {
-        mDelayAdjustSlider.setValue(mDelayAdjustSlider.getValue() - 1);
-    };
-
-    mDelayAdjustCcLabel.setText("Delay Adjust CC", juce::dontSendNotification);
-    addAndMakeVisible(mDelayAdjustCcLabel);
-    mDelayAdjustFwdCcLabel.setText("Forward", juce::dontSendNotification);
-    addAndMakeVisible(mDelayAdjustFwdCcLabel);
-    mDelayAdjustBwdCcLabel.setText("Backward", juce::dontSendNotification);
-    addAndMakeVisible(mDelayAdjustBwdCcLabel);
-
-    mDelayAdjustFwdCcSlider.setSliderStyle(juce::Slider::SliderStyle::IncDecButtons);
-    mDelayAdjustFwdCcSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, true, 50, 25);
-    addAndMakeVisible(mDelayAdjustFwdCcSlider);
-    mDelayAdjustBwdCcSlider.setSliderStyle(juce::Slider::SliderStyle::IncDecButtons);
-    mDelayAdjustBwdCcSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, true, 50, 25);
-    addAndMakeVisible(mDelayAdjustBwdCcSlider);
-
-    mDelayAdjustAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "delayAdjust", mDelayAdjustSlider));
-    mDelayAdjustFwdCcAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "midiCcDelayAdjustFwd", mDelayAdjustFwdCcSlider));
-    mDelayAdjustBwdCcAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "midiCcDelayAdjustBwd", mDelayAdjustBwdCcSlider));
-
-    mDelayAdjustCcStepLabel.setText("CC Step", juce::dontSendNotification);
-    addAndMakeVisible(mDelayAdjustCcStepLabel);
-    mDelayAdjustCcStepSlider.setSliderStyle(juce::Slider::SliderStyle::IncDecButtons);
-    mDelayAdjustCcStepSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, true, 50, 25);
-    addAndMakeVisible(mDelayAdjustCcStepSlider);
-    mDelayAdjustCcStepAttachment.reset(new juce::AudioProcessorValueTreeState::SliderAttachment(audioProcessor.getValueTreeState(), "delayAdjustCcStep", mDelayAdjustCcStepSlider));
-
-    // Add listener for controlMode
-    audioProcessor.getValueTreeState().addParameterListener("controlMode", this);
-
-    // Set initial state
-    updateControlEnablement();
-
-    setSize (400, 800);
-}
-
-AmenBreakChopperAudioProcessorEditor::~AmenBreakChopperAudioProcessorEditor()
-{
-    audioProcessor.getValueTreeState().removeParameterListener("controlMode", this);
-}
-
-//==============================================================================
-void AmenBreakChopperAudioProcessorEditor::paint (juce::Graphics& g)
-{
-    g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
-}
-
-void AmenBreakChopperAudioProcessorEditor::resized()
-{
-    const int labelWidth = 150;
-    const int controlWidth = getWidth() - labelWidth - 20;
-    const int rowHeight = 25;
-    const int sliderHeight = 50;
-    int y = 35;
-
-    // === Live Status ===
-    mStatusLabel.setBounds(10, y, getWidth() - 20, rowHeight);
-    y += rowHeight + 5;
-    mDelayTimeLabel.setBounds(10, y, labelWidth, rowHeight);
-    mDelayTimeSlider.setBounds(10, y + rowHeight - 15, getWidth() - 20, sliderHeight);
-    y += sliderHeight + 10;
-    mSequencePositionLabel.setBounds(10, y, labelWidth, rowHeight);
-    mSequencePositionSlider.setBounds(10, y + rowHeight - 15, getWidth() - 20, sliderHeight);
-    y += sliderHeight + 10;
-    mNoteSequencePositionLabel.setBounds(10, y, labelWidth, rowHeight);
-    mNoteSequencePositionSlider.setBounds(10, y + rowHeight - 15, getWidth() - 20, sliderHeight);
-    y += sliderHeight + 15;
-
-    // === Control Mode ===
-    mControlModeLabel.setBounds(10, y, labelWidth, rowHeight);
-    mControlModeComboBox.setBounds(10 + labelWidth, y, controlWidth, rowHeight);
-    y += rowHeight + 15;
-
-    // === MIDI Configuration ===
-    mMidiConfigLabel.setBounds(10, y, getWidth() - 20, rowHeight);
-    y += rowHeight + 5;
-    mMidiInputChannelLabel.setBounds(10, y, labelWidth, rowHeight);
-    mMidiInputChannelSlider.setBounds(10 + labelWidth, y, 100, rowHeight);
-    y += rowHeight + 5;
-    mMidiOutputChannelLabel.setBounds(10, y, labelWidth, rowHeight);
-    mMidiOutputChannelSlider.setBounds(10 + labelWidth, y, 100, rowHeight);
-    y += rowHeight + 5;
-    mMidiCcSeqResetLabel.setBounds(10, y, labelWidth, rowHeight);
-    mMidiCcSeqResetSlider.setBounds(10 + labelWidth, y, 100, rowHeight);
-    mMidiCcSeqResetModeComboBox.setBounds(10 + labelWidth + 105, y, controlWidth - 105, rowHeight);
-    y += rowHeight + 5;
-    mMidiCcTimerResetLabel.setBounds(10, y, labelWidth, rowHeight);
-    mMidiCcTimerResetSlider.setBounds(10 + labelWidth, y, 100, rowHeight);
-    mMidiCcTimerResetModeComboBox.setBounds(10 + labelWidth + 105, y, controlWidth - 105, rowHeight);
-    y += rowHeight + 5;
-    mMidiCcSoftResetLabel.setBounds(10, y, labelWidth, rowHeight);
-    mMidiCcSoftResetSlider.setBounds(10 + labelWidth, y, 100, rowHeight);
-    mMidiCcSoftResetModeComboBox.setBounds(10 + labelWidth + 105, y, controlWidth - 105, rowHeight);
-    y += rowHeight + 15;
-
-    // === OSC Configuration ===
-    mOscConfigLabel.setBounds(10, y, getWidth() - 20, rowHeight);
-    y += rowHeight + 5;
-    mOscHostAddressLabel.setBounds(10, y, labelWidth, rowHeight);
-    mOscHostAddressEditor.setBounds(10 + labelWidth, y, controlWidth, rowHeight);
-    y += rowHeight + 5;
-    mOscSendPortLabel.setBounds(10, y, labelWidth, rowHeight);
-    mOscSendPortSlider.setBounds(10 + labelWidth, y, 120, rowHeight);
-    y += rowHeight + 5;
-    mOscReceivePortLabel.setBounds(10, y, labelWidth, rowHeight);
-    mOscReceivePortSlider.setBounds(10 + labelWidth, y, 120, rowHeight);
-    y += rowHeight + 15;
-
-    // === Delay Adjustment ===
-    mDelayAdjustLabel.setBounds(10, y, labelWidth, rowHeight);
-    mDelayAdjustSlider.setBounds(10 + labelWidth, y, controlWidth - 80, rowHeight);
-    mDelayAdjustBwdButton.setBounds(10 + labelWidth + controlWidth - 75, y, 35, rowHeight);
-    mDelayAdjustFwdButton.setBounds(10 + labelWidth + controlWidth - 35, y, 35, rowHeight);
-    y += rowHeight + 5;
-    mDelayAdjustCcLabel.setBounds(10, y, getWidth() - 20, rowHeight);
-    y += rowHeight + 5;
-    mDelayAdjustBwdCcLabel.setBounds(10, y, labelWidth, rowHeight);
-    mDelayAdjustBwdCcSlider.setBounds(10 + labelWidth, y, 100, rowHeight);
-    y += rowHeight + 5;
-    mDelayAdjustFwdCcLabel.setBounds(10, y, labelWidth, rowHeight);
-    mDelayAdjustFwdCcSlider.setBounds(10 + labelWidth, y, 100, rowHeight);
-    y += rowHeight + 5;
-    mDelayAdjustCcStepLabel.setBounds(10, y, labelWidth, rowHeight);
-    mDelayAdjustCcStepSlider.setBounds(10 + labelWidth, y, 100, rowHeight);
-}
-
-void AmenBreakChopperAudioProcessorEditor::textEditorTextChanged(juce::TextEditor& editor)
-{
-    if (&editor == &mOscHostAddressEditor)
-    {
-        audioProcessor.setOscHostAddress(mOscHostAddressEditor.getText());
+  auto &params = audioProcessor.getValueTreeState();
+  for (auto *param : audioProcessor.getParameters()) {
+    if (auto *p = dynamic_cast<juce::AudioProcessorParameterWithID *>(param)) {
+      params.addParameterListener(p->paramID, this);
     }
+  }
 }
 
-void AmenBreakChopperAudioProcessorEditor::parameterChanged(const juce::String& parameterID, float newValue)
-{
-    if (parameterID == "controlMode")
-    {
-        updateControlEnablement();
+AmenBreakChopperAudioProcessorEditor::~AmenBreakChopperAudioProcessorEditor() {
+  auto &params = audioProcessor.getValueTreeState();
+  for (auto *param : audioProcessor.getParameters()) {
+    if (auto *p = dynamic_cast<juce::AudioProcessorParameterWithID *>(param)) {
+      params.removeParameterListener(p->paramID, this);
     }
+  }
 }
 
-void AmenBreakChopperAudioProcessorEditor::updateControlEnablement()
-{
-    auto* controlModeParam = audioProcessor.getValueTreeState().getRawParameterValue("controlMode");
-    const bool isOscMode = controlModeParam->load() > 0.5f; // 0 is Internal, 1 is OSC
-    const bool isInternalMode = !isOscMode;
+void AmenBreakChopperAudioProcessorEditor::paint(juce::Graphics &g) {
+  g.fillAll(juce::Colours::black);
+}
 
-    // MIDI controls are enabled in Internal mode
-    mMidiConfigLabel.setEnabled(isInternalMode);
-    mMidiInputChannelLabel.setEnabled(isInternalMode);
-    mMidiInputChannelSlider.setEnabled(isInternalMode);
-    mMidiOutputChannelLabel.setEnabled(isInternalMode);
-    mMidiOutputChannelSlider.setEnabled(isInternalMode);
-    mMidiCcSeqResetLabel.setEnabled(isInternalMode);
-    mMidiCcSeqResetSlider.setEnabled(isInternalMode);
-    mMidiCcTimerResetLabel.setEnabled(isInternalMode);
-    mMidiCcTimerResetSlider.setEnabled(isInternalMode);
-    mMidiCcSoftResetLabel.setEnabled(isInternalMode);
-    mMidiCcSoftResetSlider.setEnabled(isInternalMode);
+void AmenBreakChopperAudioProcessorEditor::resized() {
+  webView.setBounds(getLocalBounds());
+}
 
-    mMidiCcSeqResetModeComboBox.setEnabled(isInternalMode);
-    mMidiCcTimerResetModeComboBox.setEnabled(isInternalMode);
-    mMidiCcSoftResetModeComboBox.setEnabled(isInternalMode);
+void AmenBreakChopperAudioProcessorEditor::parameterChanged(
+    const juce::String &parameterID, float newValue) {
+  sendParameterUpdate(parameterID, newValue);
+}
 
-    // OSC controls are enabled in OSC mode
-    mOscConfigLabel.setEnabled(isOscMode);
-    mOscHostAddressLabel.setEnabled(isOscMode);
-    mOscHostAddressEditor.setEnabled(isOscMode);
-    mOscSendPortLabel.setEnabled(isOscMode);
-    mOscSendPortSlider.setEnabled(isOscMode);
-    mOscReceivePortLabel.setEnabled(isOscMode);
-    mOscReceivePortSlider.setEnabled(isOscMode);
+void AmenBreakChopperAudioProcessorEditor::sendParameterUpdate(
+    const juce::String &paramId, float newValue) {
+  juce::MessageManager::callAsync([this, paramId, newValue]() {
+    juce::DynamicObject *obj = new juce::DynamicObject();
+    obj->setProperty("id", paramId);
+    obj->setProperty("value", newValue);
 
-    // Delay adjustment controls are always enabled
-    mDelayAdjustLabel.setEnabled(true);
-    mDelayAdjustSlider.setEnabled(true);
-    mDelayAdjustFwdButton.setEnabled(true);
-    mDelayAdjustBwdButton.setEnabled(true);
-    mDelayAdjustCcLabel.setEnabled(isInternalMode);
-    mDelayAdjustFwdCcLabel.setEnabled(isInternalMode);
-    mDelayAdjustFwdCcSlider.setEnabled(isInternalMode);
-    mDelayAdjustBwdCcLabel.setEnabled(isInternalMode);
-    mDelayAdjustBwdCcSlider.setEnabled(isInternalMode);
-    mDelayAdjustCcStepLabel.setEnabled(isInternalMode);
-    mDelayAdjustCcStepSlider.setEnabled(isInternalMode);
+    juce::String js =
+        "if (window.juce_updateParameter) window.juce_updateParameter(" +
+        juce::JSON::toString(juce::var(obj)) + ");";
+    webView.evaluateJavascript(js);
+  });
+}
+
+void AmenBreakChopperAudioProcessorEditor::syncAllParametersToFrontend() {
+  for (auto *param : audioProcessor.getParameters()) {
+    if (auto *p = dynamic_cast<juce::AudioProcessorParameterWithID *>(param)) {
+      float val = p->getValue();
+      // Try to convert to world value if possible
+      if (auto *rp = dynamic_cast<juce::RangedAudioParameter *>(param)) {
+        val = rp->convertFrom0to1(val);
+      }
+      sendParameterUpdate(p->paramID, val);
+    }
+  }
 }

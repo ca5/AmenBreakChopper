@@ -8,102 +8,36 @@
 
 #pragma once
 
-#include <JuceHeader.h>
 #include "PluginProcessor.h"
+#include <JuceHeader.h>
 
 //==============================================================================
 /**
-*/
-class AmenBreakChopperAudioProcessorEditor  : public juce::AudioProcessorEditor,
-                                              public juce::TextEditor::Listener,
-                                              public juce::AudioProcessorValueTreeState::Listener
-{
+ */
+class AmenBreakChopperAudioProcessorEditor
+    : public juce::AudioProcessorEditor,
+      public juce::AudioProcessorValueTreeState::Listener {
 public:
-    AmenBreakChopperAudioProcessorEditor (AmenBreakChopperAudioProcessor&);
-    ~AmenBreakChopperAudioProcessorEditor() override;
+  AmenBreakChopperAudioProcessorEditor(AmenBreakChopperAudioProcessor &);
+  ~AmenBreakChopperAudioProcessorEditor() override;
 
-    //==============================================================================
-    void paint (juce::Graphics&) override;
-    void resized() override;
-    void textEditorTextChanged(juce::TextEditor& editor) override;
-    void parameterChanged(const juce::String& parameterID, float newValue) override;
+  //==============================================================================
+  void paint(juce::Graphics &) override;
+  void resized() override;
+  void parameterChanged(const juce::String &parameterID,
+                        float newValue) override;
 
 private:
-    void updateControlEnablement();
+  AmenBreakChopperAudioProcessor &audioProcessor;
 
-    AmenBreakChopperAudioProcessor& audioProcessor;
+  juce::WebBrowserComponent webView;
 
-    juce::Slider mDelayTimeSlider;
-    juce::Slider mSequencePositionSlider;
-    juce::Slider mNoteSequencePositionSlider;
+  // Helper to send events to JS
+  void sendParameterUpdate(const juce::String &paramId, float newValue);
 
-    juce::Slider mMidiInputChannelSlider;
-    juce::Slider mMidiOutputChannelSlider;
+  // Initial state setup
+  void syncAllParametersToFrontend();
 
-    juce::ComboBox mControlModeComboBox;
-
-    juce::Label mStatusLabel;
-    juce::Label mControlModeLabel, mDelayTimeLabel, mSequencePositionLabel, mNoteSequencePositionLabel, mMidiInputChannelLabel, mMidiOutputChannelLabel;
-
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mDelayTimeAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mSequencePositionAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mNoteSequencePositionAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mMidiInputChannelAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mMidiOutputChannelAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> mControlModeAttachment;
-
-    // New controls
-    juce::Label mOscConfigLabel;
-    juce::Label mOscHostAddressLabel;
-    juce::TextEditor mOscHostAddressEditor;
-    juce::Label mOscSendPortLabel;
-    juce::Slider mOscSendPortSlider;
-    juce::Label mOscReceivePortLabel;
-    juce::Slider mOscReceivePortSlider;
-
-    juce::Label mMidiConfigLabel; // New main MIDI label
-    juce::Label mMidiCcConfigLabel;
-    juce::Label mMidiCcSeqResetLabel;
-    juce::Slider mMidiCcSeqResetSlider;
-    juce::Label mMidiCcTimerResetLabel;
-    juce::Slider mMidiCcTimerResetSlider;
-    juce::Label mMidiCcSoftResetLabel;
-    juce::Slider mMidiCcSoftResetSlider;
-
-    juce::Label mMidiCcSeqResetModeLabel;
-    juce::ComboBox mMidiCcSeqResetModeComboBox;
-    juce::Label mMidiCcTimerResetModeLabel;
-    juce::ComboBox mMidiCcTimerResetModeComboBox;
-    juce::Label mMidiCcSoftResetModeLabel;
-    juce::ComboBox mMidiCcSoftResetModeComboBox;
-
-    // New attachments
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mOscSendPortAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mOscReceivePortAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mMidiCcSeqResetAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mMidiCcTimerResetAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mMidiCcSoftResetAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> mMidiCcSeqResetModeAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> mMidiCcTimerResetModeAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> mMidiCcSoftResetModeAttachment;
-
-    // Delay Adjustment controls
-    juce::Label mDelayAdjustLabel;
-    juce::Slider mDelayAdjustSlider;
-    juce::TextButton mDelayAdjustFwdButton{ ">" };
-    juce::TextButton mDelayAdjustBwdButton{ "<" };
-    juce::Label mDelayAdjustCcLabel;
-    juce::Label mDelayAdjustFwdCcLabel;
-    juce::Slider mDelayAdjustFwdCcSlider;
-    juce::Label mDelayAdjustBwdCcLabel;
-    juce::Slider mDelayAdjustBwdCcSlider;
-
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mDelayAdjustAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mDelayAdjustFwdCcAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mDelayAdjustBwdCcAttachment;
-    juce::Label mDelayAdjustCcStepLabel;
-    juce::Slider mDelayAdjustCcStepSlider;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mDelayAdjustCcStepAttachment;
-
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AmenBreakChopperAudioProcessorEditor)
+  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(
+      AmenBreakChopperAudioProcessorEditor)
 };
