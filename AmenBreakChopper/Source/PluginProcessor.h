@@ -72,6 +72,7 @@ public:
   
   // Waveform Data
   std::vector<float> getWaveformData();
+  int getSequencePosition() { return mSequencePosition.load(); }
   std::atomic<bool> mWaveformDirty{true};
 
 private:
@@ -90,7 +91,7 @@ private:
 
   // --- Sequencer State ---
   double mNextEighthNotePpq{0.0};
-  int mSequencePosition{0};
+  std::atomic<int> mSequencePosition{0};
   int mNoteSequencePosition{0};
   int mLastReceivedNoteValue{0};
   std::atomic<int> mUiTriggeredNote{-1}; // Atomic for thread safety

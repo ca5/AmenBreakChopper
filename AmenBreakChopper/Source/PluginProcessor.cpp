@@ -59,10 +59,9 @@ std::vector<float> AmenBreakChopperAudioProcessor::getWaveformData() {
   for (int stepIndex = 0; stepIndex < 16; ++stepIndex) {
       // If this is the currently recording step, it contains mostly old data (from 16 beats ago).
       // The user requested to hide this.
-      // Note: mSequencePosition holds the *next* step index during the beat.
-      // So the current playing/recording step is (currentSeqPos - 1).
-      int actualCurrentStep = (currentSeqPos - 1 + 16) % 16;
-      if (stepIndex == actualCurrentStep) {
+      // mSequencePosition is the NEXT step index. So (current - 1) is Actively Playing.
+      int activeStep = (currentSeqPos - 1 + 16) % 16;
+      if (stepIndex == activeStep) {
           for (int i = 0; i < 32; ++i) waveformData.push_back(0.0f);
           continue;
       }
@@ -621,12 +620,12 @@ void AmenBreakChopperAudioProcessor::processBlock(
     }
 
     mValueTreeState.getParameter("sequencePosition")
-        ->setValueNotifyingHost(static_cast<float>(mSequencePosition) / 15.0f);
+        ->setValueNotifyingHost(static_cast<float>(mSequencePosition.load()) / 15.0f);
     mValueTreeState.getParameter("noteSequencePosition")
         ->setValueNotifyingHost(static_cast<float>(mNoteSequencePosition) /
                                 15.0f);
 
-    mSender.send(juce::OSCMessage("/sequencePosition", mSequencePosition));
+    mSender.send(juce::OSCMessage("/sequencePosition", mSequencePosition.load()));
     mSender.send(
         juce::OSCMessage("/noteSequencePosition", mNoteSequencePosition));
 
@@ -657,13 +656,12 @@ void AmenBreakChopperAudioProcessor::processBlock(
 
     mNewNoteReceived = false;
 
-    // Sequence advanced, trigger visual update
-    if (mSequencePosition != (mSequencePosition + 1) % 16) {
-        mWaveformDirty = true; 
-    }
-
+    // Advance sequence
     mSequencePosition = (mSequencePosition + 1) % 16;
     mNoteSequencePosition = (mNoteSequencePosition + 1) % 16;
+
+    // Sequence advanced, trigger visual update
+    mWaveformDirty = true; 
 
     mNextEighthNotePpq += 0.5; // Advance to the next 8th note position
   }

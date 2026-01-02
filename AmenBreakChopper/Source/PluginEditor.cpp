@@ -306,6 +306,7 @@ void AmenBreakChopperAudioProcessorEditor::paint(juce::Graphics &g) {
 void AmenBreakChopperAudioProcessorEditor::timerCallback() {
   if (audioProcessor.mWaveformDirty.exchange(false)) {
       std::vector<float> waveform = audioProcessor.getWaveformData();
+      int currentSeqPos = audioProcessor.getSequencePosition(); // Use public getter
       
       // Manually construct JSON string for speed/simplicity or use JUCE JSON
       // We need to send an array of 512 floats.
@@ -318,6 +319,7 @@ void AmenBreakChopperAudioProcessorEditor::timerCallback() {
       }
       
       obj->setProperty("data", dataArray);
+      obj->setProperty("currentSeqPos", currentSeqPos); // Send synchronised position
       
       juce::String js = "if (typeof window.juce_emitEvent === 'function') { "
                         "window.juce_emitEvent('waveform', " + juce::JSON::toString(juce::var(obj)) + "); }";
