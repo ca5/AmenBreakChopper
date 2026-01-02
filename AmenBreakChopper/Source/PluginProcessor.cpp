@@ -69,11 +69,11 @@ AmenBreakChopperAudioProcessor::createParameterLayout() {
   layout.add(std::make_unique<juce::AudioParameterInt>(
       "delayAdjust", "Delay Adjust", -4096, 4096, 0));
   layout.add(std::make_unique<juce::AudioParameterInt>(
-      "midiCcDelayAdjustFwd", "MIDI CC Delay Adjust Fwd", 0, 127, 0));
+      "midiCcDelayAdjustFwd", "MIDI CC Delay Adjust Fwd", 0, 127, 21));
   layout.add(std::make_unique<juce::AudioParameterInt>(
-      "midiCcDelayAdjustBwd", "MIDI CC Delay Adjust Bwd", 0, 127, 0));
+      "midiCcDelayAdjustBwd", "MIDI CC Delay Adjust Bwd", 0, 127, 19));
   layout.add(std::make_unique<juce::AudioParameterInt>(
-      "delayAdjustCcStep", "Delay Adjust CC Step", 1, 128, 1));
+      "delayAdjustCcStep", "Delay Adjust CC Step", 1, 128, 64));
 
   return layout;
 }
