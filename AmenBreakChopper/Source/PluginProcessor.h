@@ -86,6 +86,7 @@ private:
   int mWritePosition{0};
   double mSampleRate{0.0};
   std::atomic<double> mCurrentBpm{120.0};
+  std::atomic<double> mSamplesToNextBeat{0.0};
 
   // --- Sequencer State ---
   double mNextEighthNotePpq{0.0};

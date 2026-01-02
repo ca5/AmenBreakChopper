@@ -47,40 +47,62 @@ std::vector<float> AmenBreakChopperAudioProcessor::getWaveformData() {
   int bufferSize = mDelayBuffer.getNumSamples();
   if (bufferSize == 0) return std::vector<float>(16 * 32, 0.0f);
 
-  // Snapshot write position safely (atomic load not strictly needed for int in this context but good practice if it were atomic)
-  // We accept tearing, just read the value.
+  if (bufferSize == 0) return std::vector<float>(16 * 32, 0.0f);
+
   int currentWritePos = mWritePosition; 
   int currentSeqPos = mSequencePosition;
+  double samplesToNextBeat = mSamplesToNextBeat.load();
   
   const auto* channelData = mDelayBuffer.getReadPointer(0); // Use Left channel for visualization
 
   // Loop through 0..15 corresponding to the 16 steps of the sequence.
-  // We want waveformData[stepIndex] to correspond to Sequence Step 'stepIndex'.
   for (int stepIndex = 0; stepIndex < 16; ++stepIndex) {
       // Logic:
-      // currentSeqPos is the step that JUST started (or is currently recording).
-      // Step (currentSeqPos - 1) is the one that just finished at currentWritePos.
-      // So, how many steps ago was 'stepIndex' recorded?
-      // stepsAgo = (currentSeqPos - 1 - stepIndex + 16) % 16
+      // "Current Step" (the one defined by currentSeqPos - 1) ends at "currentWritePos + samplesToNextBeat".
+      // Current Step is (currentSeqPos - 1 + 16) % 16.
       
-      int stepsAgo = (currentSeqPos - 1 - stepIndex + 16) % 16;
+      int currentStepIdx = (currentSeqPos - 1 + 16) % 16;
       
-      // Calculate times relative to currentWritePos
-      double endOffset = stepsAgo * eighthNoteSamples;
-      double startOffset = (stepsAgo + 1) * eighthNoteSamples;
+      // We want to find the start/end of 'stepIndex' relative to 'currentStepIdx'.
+      // offsetSteps = stepIndex - currentStepIdx;
+      // If offsetSteps > 0, it's in the future (relative to the currently playing step start).
+      // We want the most recent *completed* or *active* recording of this step.
       
-      int startIdx = currentWritePos - static_cast<int>(startOffset);
-      int endIdx = currentWritePos - static_cast<int>(endOffset);
+      int diff = stepIndex - currentStepIdx;
+      // Wrap diff to be within [-15, 0] roughly? 
+      // Actually, define distance in steps BACKWARDS from current step end.
       
-      // Calculate 32 points within this range [startIdx, endIdx)
+      // Time of StepIndex End = Time of CurrentStep End + (diff * duration).
+      // Time of CurrentStep End = currentWritePos + samplesToNextBeat.
+      
+      double endSamplePosFromNow = samplesToNextBeat + (diff * eighthNoteSamples);
+      
+      // If endSamplePosFromNow > 0, it means it ends in the future.
+      // We want the version that is fully recorded or currently recording?
+      // For the current step (diff=0), end is in future, start is in past. We show it.
+      // For next step (diff=1), end is far in future. We want the previous loop's version.
+      // So subtract Loop Duration (16 * duration) until endSamplePosFromNow <= samplesToNextBeat ? 
+      // Actually, strictly speaking, we want the most recent data.
+      // If diff=1 (Next Step), it hasn't happened yet. So we show (Next Step - 16).
+      // If diff=0 (Current Step), it is happening now. We show it.
+      
+      while (endSamplePosFromNow > samplesToNextBeat) {
+          endSamplePosFromNow -= (16.0 * eighthNoteSamples);
+      }
+      
+      double startSamplePosFromNow = endSamplePosFromNow - eighthNoteSamples;
+      
+      // Convert to buffer indices relative to currentWritePos
+      // Index = currentWritePos + offset
+      int startIdx = currentWritePos + static_cast<int>(startSamplePosFromNow);
+      int endIdx = currentWritePos + static_cast<int>(endSamplePosFromNow);
+      
       int len = endIdx - startIdx;
-      if (len <= 0) len = 1; // Safety
+      if (len <= 0) len = 1; 
       
       for (int i = 0; i < 32; ++i) {
-          // Sample position within the step
           int samplePos = startIdx + (i * len) / 32;
           
-          // Wrap around buffer
           while (samplePos < 0) samplePos += bufferSize;
           while (samplePos >= bufferSize) samplePos -= bufferSize;
           
@@ -549,6 +571,13 @@ void AmenBreakChopperAudioProcessor::processBlock(
   double ppqAtEndOfBlock = ppqAtStartOfBlock + (bufferLength * ppqPerSample);
 
   if (positionInfo.getIsPlaying()) {
+      // Update samples to next beat for visualization
+      double ppqDist = mNextEighthNotePpq - ppqAtStartOfBlock;
+      if (ppqPerSample > 0.0) {
+          mSamplesToNextBeat.store(ppqDist / ppqPerSample);
+      } else {
+          mSamplesToNextBeat.store(0.0);
+      }
 
   // --- Apply delayAdjust to sequencer phase ---
   auto *delayAdjustParam = static_cast<juce::AudioParameterInt *>(
