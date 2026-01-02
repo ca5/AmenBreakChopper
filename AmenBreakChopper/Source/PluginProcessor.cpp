@@ -57,6 +57,16 @@ std::vector<float> AmenBreakChopperAudioProcessor::getWaveformData() {
 
   // Loop through 0..15 corresponding to the 16 steps of the sequence.
   for (int stepIndex = 0; stepIndex < 16; ++stepIndex) {
+      // If this is the currently recording step, it contains mostly old data (from 16 beats ago).
+      // The user requested to hide this.
+      // Note: mSequencePosition holds the *next* step index during the beat.
+      // So the current playing/recording step is (currentSeqPos - 1).
+      int actualCurrentStep = (currentSeqPos - 1 + 16) % 16;
+      if (stepIndex == actualCurrentStep) {
+          for (int i = 0; i < 32; ++i) waveformData.push_back(0.0f);
+          continue;
+      }
+      
       // Logic:
       // "Current Step" (the one defined by currentSeqPos - 1) ends at "currentWritePos + samplesToNextBeat".
       // Current Step is (currentSeqPos - 1 + 16) % 16.
