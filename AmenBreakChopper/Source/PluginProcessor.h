@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_osc/juce_osc.h>
 
@@ -66,6 +67,7 @@ public:
   // Reset Commands
   void performSequenceReset();
   void performSoftReset();
+  void triggerNoteFromUi(int noteNumber);
 
 private:
   //==============================================================================
@@ -84,6 +86,7 @@ private:
   int mSequencePosition{0};
   int mNoteSequencePosition{0};
   int mLastReceivedNoteValue{0};
+  std::atomic<int> mUiTriggeredNote{-1}; // Atomic for thread safety
   bool mSequenceResetQueued{false};
   bool mTimerResetQueued{false};
   bool mNewNoteReceived{false};

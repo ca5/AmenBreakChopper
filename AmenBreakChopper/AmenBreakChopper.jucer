@@ -18,10 +18,8 @@
     <FILE id="qO1STI" name="icon.png" compile="0" resource="1" file="icon.png"/>
     <GROUP id="{926DC5E8-2D25-03F8-2D4A-1F8351267A66}" name="dist">
       <GROUP id="{A1726244-E061-EBA7-CFE0-A69245565671}" name="assets">
-        <FILE id="WQyY9l" name="index-BgHzA0wq.css" compile="0" resource="1"
-              file="../ui/dist/assets/index-BgHzA0wq.css"/>
-        <FILE id="Zpi2uS" name="index-sab-nr8G.js" compile="0" resource="1"
-              file="../ui/dist/assets/index-sab-nr8G.js"/>
+        <FILE id="WQyY9l" name="index.css" compile="0" resource="1" file="../ui/dist/assets/index.css"/>
+        <FILE id="Zpi2uS" name="index.js" compile="0" resource="1" file="../ui/dist/assets/index.js"/>
       </GROUP>
       <FILE id="LyXJBJ" name="index.html" compile="0" resource="1" file="../ui/dist/index.html"/>
     </GROUP>

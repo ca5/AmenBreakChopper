@@ -218,6 +218,17 @@ AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor(
                     completion(juce::var());
                   })
               .withNativeFunction(
+                  "triggerNoteFromUi",
+                  [this](const juce::Array<juce::var> &args,
+                         juce::WebBrowserComponent::NativeFunctionCompletion
+                             completion) {
+                    if (args.size() == 1 && args[0].isInt()) {
+                      audioProcessor.triggerNoteFromUi(
+                          static_cast<int>(args[0]));
+                    }
+                    completion(juce::var());
+                  })
+              .withNativeFunction(
                   "requestInitialState",
                   [this](const juce::Array<juce::var> &,
                          juce::WebBrowserComponent::NativeFunctionCompletion
@@ -256,9 +267,10 @@ AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor(
       // Component::BailOutChecker is built-in for some things. For now, simple
       // check:
       if (webView.isVisible()) {
-        juce::String js =
-            "window.juce_emitEvent('note', { note1: " + juce::String(note1) +
-            ", note2: " + juce::String(note2) + " });";
+        juce::String js = "if (typeof window.juce_emitEvent === 'function') { "
+                          "window.juce_emitEvent('note', { note1: " +
+                          juce::String(note1) +
+                          ", note2: " + juce::String(note2) + " }); }";
         webView.evaluateJavascript(js);
       }
     });
@@ -294,9 +306,9 @@ void AmenBreakChopperAudioProcessorEditor::sendParameterUpdate(
     obj->setProperty("id", paramId);
     obj->setProperty("value", newValue);
 
-    juce::String js =
-        "if (window.juce_updateParameter) window.juce_updateParameter(" +
-        juce::JSON::toString(juce::var(obj)) + ");";
+    juce::String js = "if (typeof window.juce_updateParameter === 'function') "
+                      "{ window.juce_updateParameter(" +
+                      juce::JSON::toString(juce::var(obj)) + "); }";
     webView.evaluateJavascript(js);
   });
 }

@@ -275,6 +275,17 @@ void AmenBreakChopperAudioProcessor::processBlock(
       (int)mValueTreeState.getRawParameterValue("midiInputChannel")->load();
   const int midiOutChannel =
       (int)mValueTreeState.getRawParameterValue("midiOutputChannel")->load();
+
+  // Check for UI-triggered note invocation
+  int uiNote = mUiTriggeredNote.exchange(-1);
+  if (uiNote >= 0 && uiNote <= 15) {
+    mLastReceivedNoteValue = uiNote;
+    mNoteSequencePosition = uiNote;
+    mNewNoteReceived = true;
+    if (onNoteEvent)
+      onNoteEvent(uiNote, -1);
+  }
+
   juce::MidiBuffer processedMidi; // Create a new buffer for our generated notes
   for (const auto metadata : midiMessages) {
     auto message = metadata.getMessage();
@@ -645,6 +656,12 @@ void AmenBreakChopperAudioProcessor::setStateInformation(const void *data,
     p->setValueNotifyingHost(p->getDefaultValue());
   if (auto *p = mValueTreeState.getParameter("noteSequencePosition"))
     p->setValueNotifyingHost(p->getDefaultValue());
+}
+
+//==============================================================================
+
+void AmenBreakChopperAudioProcessor::triggerNoteFromUi(int noteNumber) {
+  mUiTriggeredNote = noteNumber;
 }
 
 //==============================================================================
