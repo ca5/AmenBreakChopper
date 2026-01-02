@@ -24,6 +24,73 @@ AmenBreakChopperAudioProcessor::AmenBreakChopperAudioProcessor()
 
 AmenBreakChopperAudioProcessor::~AmenBreakChopperAudioProcessor() {}
 
+std::vector<float> AmenBreakChopperAudioProcessor::getWaveformData() {
+  std::vector<float> waveformData;
+  waveformData.reserve(16 * 32);
+
+  // 1. Calculate timing
+  // Use stored bpm from processBlock
+  double bpm = mCurrentBpm.load();
+  if (bpm <= 0.1) bpm = 120.0;
+  
+  double sampleRate = mSampleRate;
+  if (sampleRate <= 0.0) sampleRate = 44100.0;
+
+  double eighthNoteSamples = (60.0 / bpm) / 2.0 * sampleRate;
+  
+  // 2. Determine "End" of the loop (latest recorded data)
+  // The buffer records continuously. 
+  // We want to visualize the *last 16 steps* (2 bars of 4/4 usually, or 8 beats).
+  // Step 15 ends at mWritePosition.
+  // Step 0 starts at mWritePosition - 16 * eighthNoteSamples.
+  
+  int bufferSize = mDelayBuffer.getNumSamples();
+  if (bufferSize == 0) return std::vector<float>(16 * 32, 0.0f);
+
+  // Snapshot write position safely (atomic load not strictly needed for int in this context but good practice if it were atomic)
+  // We accept tearing, just read the value.
+  int currentWritePos = mWritePosition; 
+  int currentSeqPos = mSequencePosition;
+  
+  const auto* channelData = mDelayBuffer.getReadPointer(0); // Use Left channel for visualization
+
+  // Loop through 0..15 corresponding to the 16 steps of the sequence.
+  // We want waveformData[stepIndex] to correspond to Sequence Step 'stepIndex'.
+  for (int stepIndex = 0; stepIndex < 16; ++stepIndex) {
+      // Logic:
+      // currentSeqPos is the step that JUST started (or is currently recording).
+      // Step (currentSeqPos - 1) is the one that just finished at currentWritePos.
+      // So, how many steps ago was 'stepIndex' recorded?
+      // stepsAgo = (currentSeqPos - 1 - stepIndex + 16) % 16
+      
+      int stepsAgo = (currentSeqPos - 1 - stepIndex + 16) % 16;
+      
+      // Calculate times relative to currentWritePos
+      double endOffset = stepsAgo * eighthNoteSamples;
+      double startOffset = (stepsAgo + 1) * eighthNoteSamples;
+      
+      int startIdx = currentWritePos - static_cast<int>(startOffset);
+      int endIdx = currentWritePos - static_cast<int>(endOffset);
+      
+      // Calculate 32 points within this range [startIdx, endIdx)
+      int len = endIdx - startIdx;
+      if (len <= 0) len = 1; // Safety
+      
+      for (int i = 0; i < 32; ++i) {
+          // Sample position within the step
+          int samplePos = startIdx + (i * len) / 32;
+          
+          // Wrap around buffer
+          while (samplePos < 0) samplePos += bufferSize;
+          while (samplePos >= bufferSize) samplePos -= bufferSize;
+          
+          waveformData.push_back(channelData[samplePos]);
+      }
+  }
+
+  return waveformData;
+}
+
 //==============================================================================
 juce::AudioProcessorValueTreeState::ParameterLayout
 AmenBreakChopperAudioProcessor::createParameterLayout() {
@@ -453,11 +520,7 @@ void AmenBreakChopperAudioProcessor::processBlock(
     mHardResetQueued = false;
   }
 
-  if (!positionInfo.getIsPlaying()) {
-    midiMessages.swapWith(processedMidi);
-    // If transport is not playing, do nothing (pass audio through).
-    return;
-  }
+
 
   // --- Get musical time information ---
   const double sampleRate = getSampleRate();
@@ -475,9 +538,17 @@ void AmenBreakChopperAudioProcessor::processBlock(
     mNextEighthNotePpq = std::ceil(ppqAtStartOfBlock * 2.0) / 2.0;
   }
 
+  // Update BPM for UI
+  mCurrentBpm.store(bpm);
+
+  // Check if we crossed a beat boundary (integer part of mNextEighthNotePpq changed?)
+  // Actually, we can just check if mSequencePosition changes in the loop below.
+
   // --- Sequencer Tick Logic (Block-based) ---
   const int bufferLength = buffer.getNumSamples();
   double ppqAtEndOfBlock = ppqAtStartOfBlock + (bufferLength * ppqPerSample);
+
+  if (positionInfo.getIsPlaying()) {
 
   // --- Apply delayAdjust to sequencer phase ---
   auto *delayAdjustParam = static_cast<juce::AudioParameterInt *>(
@@ -488,6 +559,7 @@ void AmenBreakChopperAudioProcessor::processBlock(
   if (deltaDelayAdjust != 0) {
     const double deltaPpq = deltaDelayAdjust * ppqPerSample;
     mNextEighthNotePpq += deltaPpq;
+    mWaveformDirty = true; // Delay adjust changed, waveforms shifted
   }
   mLastDelayAdjust = currentDelayAdjust;
 
@@ -553,11 +625,20 @@ void AmenBreakChopperAudioProcessor::processBlock(
 
     mNewNoteReceived = false;
 
+    // Sequence advanced, trigger visual update
+    if (mSequencePosition != (mSequencePosition + 1) % 16) {
+        mWaveformDirty = true; 
+    }
+
     mSequencePosition = (mSequencePosition + 1) % 16;
     mNoteSequencePosition = (mNoteSequencePosition + 1) % 16;
 
     mNextEighthNotePpq += 0.5; // Advance to the next 8th note position
   }
+} else {
+    // If not playing, ensure we still flag dirty so visualization updates (scrolling input)
+    mWaveformDirty = true;
+}
 
   midiMessages.swapWith(
       processedMidi); // Place our generated notes into the main buffer
@@ -577,7 +658,7 @@ void AmenBreakChopperAudioProcessor::processBlock(
     }
 
     // If DelayTime is 0, bypass the effect (output is same as input)
-    if (currentDelayTime != 0) {
+    if (currentDelayTime != 0 && positionInfo.getIsPlaying()) {
       double eighthNoteTime = (60.0 / bpm) / 2.0;
       int delayTimeInSamples =
           static_cast<int>(eighthNoteTime * currentDelayTime * sampleRate);

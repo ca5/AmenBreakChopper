@@ -285,9 +285,12 @@ AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor(
       }
     });
   };
+
+  startTimerHz(30); // Start 30Hz polling for waveform updates
 }
 
 AmenBreakChopperAudioProcessorEditor::~AmenBreakChopperAudioProcessorEditor() {
+  stopTimer();
   auto &params = audioProcessor.getValueTreeState();
   for (auto *param : audioProcessor.getParameters()) {
     if (auto *p = dynamic_cast<juce::AudioProcessorParameterWithID *>(param)) {
@@ -298,6 +301,31 @@ AmenBreakChopperAudioProcessorEditor::~AmenBreakChopperAudioProcessorEditor() {
 
 void AmenBreakChopperAudioProcessorEditor::paint(juce::Graphics &g) {
   g.fillAll(juce::Colours::black);
+}
+
+void AmenBreakChopperAudioProcessorEditor::timerCallback() {
+  if (audioProcessor.mWaveformDirty.exchange(false)) {
+      std::vector<float> waveform = audioProcessor.getWaveformData();
+      
+      // Manually construct JSON string for speed/simplicity or use JUCE JSON
+      // We need to send an array of 512 floats.
+      juce::DynamicObject* obj = new juce::DynamicObject();
+      juce::Array<juce::var> dataArray;
+      dataArray.ensureStorageAllocated(waveform.size());
+      
+      for (float sample : waveform) {
+          dataArray.add(sample);
+      }
+      
+      obj->setProperty("data", dataArray);
+      
+      juce::String js = "if (typeof window.juce_emitEvent === 'function') { "
+                        "window.juce_emitEvent('waveform', " + juce::JSON::toString(juce::var(obj)) + "); }";
+      
+      if (webView.isVisible()) {
+          webView.evaluateJavascript(js);
+      }
+  }
 }
 
 void AmenBreakChopperAudioProcessorEditor::resized() {

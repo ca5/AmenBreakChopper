@@ -16,7 +16,8 @@
  */
 class AmenBreakChopperAudioProcessorEditor
     : public juce::AudioProcessorEditor,
-      public juce::AudioProcessorValueTreeState::Listener {
+      public juce::AudioProcessorValueTreeState::Listener,
+      public juce::Timer {
 public:
   AmenBreakChopperAudioProcessorEditor(AmenBreakChopperAudioProcessor &);
   ~AmenBreakChopperAudioProcessorEditor() override;
@@ -24,6 +25,7 @@ public:
   //==============================================================================
   void paint(juce::Graphics &) override;
   void resized() override;
+  void timerCallback() override;
   void parameterChanged(const juce::String &parameterID,
                         float newValue) override;
 

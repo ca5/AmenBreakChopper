@@ -69,6 +69,10 @@ public:
   void performSoftReset();
   void performHardReset();
   void triggerNoteFromUi(int noteNumber);
+  
+  // Waveform Data
+  std::vector<float> getWaveformData();
+  std::atomic<bool> mWaveformDirty{true};
 
 private:
   //==============================================================================
@@ -81,6 +85,7 @@ private:
   juce::AudioBuffer<float> mDelayBuffer;
   int mWritePosition{0};
   double mSampleRate{0.0};
+  std::atomic<double> mCurrentBpm{120.0};
 
   // --- Sequencer State ---
   double mNextEighthNotePpq{0.0};
