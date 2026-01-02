@@ -246,7 +246,8 @@ AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor(
                   })) {
   addAndMakeVisible(webView);
 
-  setSize(800, 600);
+  setResizable(true, true);
+  setSize(768, 1024);
 
   // Load from local ResourceProvider
   // Load from local ResourceProvider
