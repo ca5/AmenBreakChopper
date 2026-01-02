@@ -57,9 +57,9 @@ AmenBreakChopperAudioProcessor::createParameterLayout() {
   layout.add(std::make_unique<juce::AudioParameterChoice>(
       "midiCcSeqResetMode", "Seq Reset Mode", ccModes, 1));
   layout.add(std::make_unique<juce::AudioParameterInt>(
-      "midiCcTimerReset", "MIDI CC Timer Reset", 0, 127, 106));
+      "midiCcHardReset", "MIDI CC Hard Reset", 0, 127, 106));
   layout.add(std::make_unique<juce::AudioParameterChoice>(
-      "midiCcTimerResetMode", "Timer Reset Mode", ccModes, 1));
+      "midiCcHardResetMode", "Hard Reset Mode", ccModes, 1));
   layout.add(std::make_unique<juce::AudioParameterInt>(
       "midiCcSoftReset", "MIDI CC Soft Reset", 0, 127, 97));
   layout.add(std::make_unique<juce::AudioParameterChoice>(
@@ -109,6 +109,10 @@ void AmenBreakChopperAudioProcessor::performSequenceReset() {
 
 void AmenBreakChopperAudioProcessor::performSoftReset() {
   mSoftResetQueued = true;
+}
+
+void AmenBreakChopperAudioProcessor::performHardReset() {
+  mHardResetQueued = true;
 }
 
 juce::AudioProcessorValueTreeState &
@@ -203,12 +207,12 @@ void AmenBreakChopperAudioProcessor::prepareToPlay(double sampleRate,
   mNoteSequencePosition = 0;
   mLastReceivedNoteValue = 0;
   mSequenceResetQueued = false;
-  mTimerResetQueued = false;
+  mHardResetQueued = false;
   mNewNoteReceived = false;
   mSoftResetQueued = false;
 
   mLastSeqResetCcValue = 0;
-  mLastTimerResetCcValue = 0;
+  mLastHardResetCcValue = 0;
   mLastSoftResetCcValue = 0;
   mLastDelayAdjustFwdCcValue = 0;
   mLastDelayAdjustBwdCcValue = 0;
@@ -308,8 +312,8 @@ void AmenBreakChopperAudioProcessor::processBlock(
 
         const int ccSeqReset =
             (int)mValueTreeState.getRawParameterValue("midiCcSeqReset")->load();
-        const int ccTimerReset =
-            (int)mValueTreeState.getRawParameterValue("midiCcTimerReset")
+        const int ccHardReset =
+            (int)mValueTreeState.getRawParameterValue("midiCcHardReset")
                 ->load();
         const int ccSoftReset =
             (int)mValueTreeState.getRawParameterValue("midiCcSoftReset")
@@ -324,13 +328,13 @@ void AmenBreakChopperAudioProcessor::processBlock(
           mLastSeqResetCcValue = controllerValue;
         }
 
-        if (controllerNumber == ccTimerReset) {
+        if (controllerNumber == ccHardReset) {
           const int mode =
-              (int)mValueTreeState.getRawParameterValue("midiCcTimerResetMode")
+              (int)mValueTreeState.getRawParameterValue("midiCcHardResetMode")
                   ->load();
-          if (shouldTriggerReset(mode, mLastTimerResetCcValue, controllerValue))
-            mTimerResetQueued = true;
-          mLastTimerResetCcValue = controllerValue;
+          if (shouldTriggerReset(mode, mLastHardResetCcValue, controllerValue))
+            mHardResetQueued = true;
+          mLastHardResetCcValue = controllerValue;
         }
 
         if (controllerNumber == ccSoftReset) {
@@ -404,7 +408,7 @@ void AmenBreakChopperAudioProcessor::processBlock(
     positionInfo = playHead->getPosition().orFallback(positionInfo);
 
   // On reset, turn off any hanging notes first
-  if (mTimerResetQueued || mSoftResetQueued) {
+  if (mHardResetQueued || mSoftResetQueued) {
     if (mLastNote1 >= 0)
       processedMidi.addEvent(
           juce::MidiMessage::noteOff(midiOutChannel, mLastNote1), 0);
@@ -415,7 +419,7 @@ void AmenBreakChopperAudioProcessor::processBlock(
     mLastNote2 = -1;
   }
 
-  if (mTimerResetQueued) {
+  if (mHardResetQueued) {
     mSequencePosition = 0;
     mNoteSequencePosition = 0;
     mValueTreeState.getParameter("sequencePosition")
@@ -440,7 +444,7 @@ void AmenBreakChopperAudioProcessor::processBlock(
       mNextEighthNotePpq += currentDelayAdjust * ppqPerSample;
       mLastDelayAdjust = currentDelayAdjust;
     }
-    mTimerResetQueued = false;
+    mHardResetQueued = false;
   }
 
   if (!positionInfo.getIsPlaying()) {
@@ -611,10 +615,11 @@ void AmenBreakChopperAudioProcessor::oscMessageReceived(
     }
   } else if (message.getAddressPattern() == "/sequenceReset") {
     mSequenceResetQueued = true;
-  } else if (message.getAddressPattern() == "/timerReset") {
-    mTimerResetQueued = true;
+  } else if (message.getAddressPattern() == "/hardReset") {
+    mHardResetQueued = true;
   } else if (message.getAddressPattern() == "/softReset") {
     mSoftResetQueued = true;
+
   } else if (message.getAddressPattern() == "/setNoteSequencePosition") {
     if (message.size() > 0 && message[0].isInt32()) {
       int noteNumber = message[0].getInt32();

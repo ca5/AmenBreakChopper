@@ -218,6 +218,14 @@ AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor(
                     completion(juce::var());
                   })
               .withNativeFunction(
+                  "performHardReset",
+                  [this](const juce::Array<juce::var> &,
+                         juce::WebBrowserComponent::NativeFunctionCompletion
+                             completion) {
+                    audioProcessor.performHardReset();
+                    completion(juce::var());
+                  })
+              .withNativeFunction(
                   "triggerNoteFromUi",
                   [this](const juce::Array<juce::var> &args,
                          juce::WebBrowserComponent::NativeFunctionCompletion
@@ -241,11 +249,12 @@ AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor(
   setSize(800, 600);
 
   // Load from local ResourceProvider
-#if JUCE_DEBUG && !JUCE_IOS
-  webView.goToURL("http://localhost:5173");
-#else
+  // Load from local ResourceProvider
+  // #if JUCE_DEBUG && !JUCE_IOS
+  //   webView.goToURL("http://localhost:5173");
+  // #else
   webView.goToURL(juce::WebBrowserComponent::getResourceProviderRoot());
-#endif
+  // #endif
 
   auto &params = audioProcessor.getValueTreeState();
   for (auto *param : audioProcessor.getParameters()) {

@@ -67,6 +67,7 @@ public:
   // Reset Commands
   void performSequenceReset();
   void performSoftReset();
+  void performHardReset();
   void triggerNoteFromUi(int noteNumber);
 
 private:
@@ -88,7 +89,7 @@ private:
   int mLastReceivedNoteValue{0};
   std::atomic<int> mUiTriggeredNote{-1}; // Atomic for thread safety
   bool mSequenceResetQueued{false};
-  bool mTimerResetQueued{false};
+  bool mHardResetQueued{false};
   bool mNewNoteReceived{false};
   bool mSoftResetQueued{false};
   int mLastNote1{-1};
@@ -96,7 +97,7 @@ private:
 
   // --- CC Value State ---
   int mLastSeqResetCcValue{0};
-  int mLastTimerResetCcValue{0};
+  int mLastHardResetCcValue{0};
   int mLastSoftResetCcValue{0};
   int mLastDelayAdjustFwdCcValue{0};
   int mLastDelayAdjustBwdCcValue{0};
