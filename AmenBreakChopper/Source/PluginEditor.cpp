@@ -241,7 +241,7 @@ AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor(
   setSize(800, 600);
 
   // Load from local ResourceProvider
-#if JUCE_DEBUG
+#if JUCE_DEBUG && !JUCE_IOS
   webView.goToURL("http://localhost:5173");
 #else
   webView.goToURL(juce::WebBrowserComponent::getResourceProviderRoot());
