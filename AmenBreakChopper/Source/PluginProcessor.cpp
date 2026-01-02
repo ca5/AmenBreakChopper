@@ -75,6 +75,12 @@ AmenBreakChopperAudioProcessor::createParameterLayout() {
   layout.add(std::make_unique<juce::AudioParameterInt>(
       "delayAdjustCcStep", "Delay Adjust CC Step", 1, 128, 64));
 
+  // Visual Settings
+  juce::StringArray themeNames = {"Green",  "Blue", "Purple", "Red",
+                                  "Orange", "Cyan", "Pink"};
+  layout.add(std::make_unique<juce::AudioParameterChoice>(
+      "colorTheme", "Color Theme", themeNames, 0));
+
   return layout;
 }
 
