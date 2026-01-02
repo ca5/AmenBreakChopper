@@ -571,13 +571,6 @@ void AmenBreakChopperAudioProcessor::processBlock(
   double ppqAtEndOfBlock = ppqAtStartOfBlock + (bufferLength * ppqPerSample);
 
   if (positionInfo.getIsPlaying()) {
-      // Update samples to next beat for visualization
-      double ppqDist = mNextEighthNotePpq - ppqAtStartOfBlock;
-      if (ppqPerSample > 0.0) {
-          mSamplesToNextBeat.store(ppqDist / ppqPerSample);
-      } else {
-          mSamplesToNextBeat.store(0.0);
-      }
 
   // --- Apply delayAdjust to sequencer phase ---
   auto *delayAdjustParam = static_cast<juce::AudioParameterInt *>(
@@ -705,6 +698,21 @@ void AmenBreakChopperAudioProcessor::processBlock(
   }
 
   mWritePosition = (mWritePosition + bufferLength) % delayBufferLength;
+  
+  if (positionInfo.getIsPlaying()) {
+      // Update samples to next beat for visualization AFTER sequencer update
+      // We use the PPQ at the end of the block since mWritePosition is now there.
+      double ppqDist = mNextEighthNotePpq - ppqAtEndOfBlock;
+      if (ppqPerSample > 0.0) {
+          double samples = ppqDist / ppqPerSample;
+          if (samples < 0) samples = 0; // Safety
+          mSamplesToNextBeat.store(samples);
+      } else {
+          mSamplesToNextBeat.store(0.0);
+      }
+  } else {
+      mSamplesToNextBeat.store(0.0);
+  }
 }
 
 //==============================================================================
