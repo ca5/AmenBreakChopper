@@ -249,18 +249,25 @@ AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor(
   setResizable(true, true);
   setSize(768, 1024);
 
-  // Load from local ResourceProvider
-  // Load from local ResourceProvider
-  // #if JUCE_DEBUG && !JUCE_IOS
-  //   webView.goToURL("http://localhost:5173");
-  // #else
-  webView.goToURL(juce::WebBrowserComponent::getResourceProviderRoot());
-  // #endif
+  // Load from local ResourceProvider using callAsync to ensure the component is initialized
+  // This helps prevent white screen issues on startup, especially on iOS
+  juce::MessageManager::callAsync([this] {
+    // #if JUCE_DEBUG && !JUCE_IOS
+    //   webView.goToURL("http://localhost:5173");
+    // #else
+    webView.goToURL(juce::WebBrowserComponent::getResourceProviderRoot());
+    // #endif
+  });
 
-  auto &params = audioProcessor.getValueTreeState();
+  // Initialize parameter cache
   for (auto *param : audioProcessor.getParameters()) {
     if (auto *p = dynamic_cast<juce::AudioProcessorParameterWithID *>(param)) {
-      params.addParameterListener(p->paramID, this);
+      float val = p->getValue();
+      // Try to convert to world value if possible
+      if (auto *rp = dynamic_cast<juce::RangedAudioParameter *>(param)) {
+        val = rp->convertFrom0to1(val);
+      }
+      lastParameterValues[p->paramID] = val;
     }
   }
 
@@ -291,12 +298,6 @@ AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor(
 
 AmenBreakChopperAudioProcessorEditor::~AmenBreakChopperAudioProcessorEditor() {
   stopTimer();
-  auto &params = audioProcessor.getValueTreeState();
-  for (auto *param : audioProcessor.getParameters()) {
-    if (auto *p = dynamic_cast<juce::AudioProcessorParameterWithID *>(param)) {
-      params.removeParameterListener(p->paramID, this);
-    }
-  }
 }
 
 void AmenBreakChopperAudioProcessorEditor::paint(juce::Graphics &g) {
@@ -304,6 +305,26 @@ void AmenBreakChopperAudioProcessorEditor::paint(juce::Graphics &g) {
 }
 
 void AmenBreakChopperAudioProcessorEditor::timerCallback() {
+  // Poll for parameter changes
+  if (webView.isVisible()) {
+    for (auto *param : audioProcessor.getParameters()) {
+      if (auto *p = dynamic_cast<juce::AudioProcessorParameterWithID *>(param)) {
+        float val = p->getValue();
+        if (auto *rp = dynamic_cast<juce::RangedAudioParameter *>(param)) {
+          val = rp->convertFrom0to1(val);
+        }
+
+        // Check against cache
+        if (lastParameterValues.find(p->paramID) == lastParameterValues.end() ||
+            std::abs(lastParameterValues[p->paramID] - val) > 0.0001f) {
+
+          lastParameterValues[p->paramID] = val;
+          sendParameterUpdate(p->paramID, val);
+        }
+      }
+    }
+  }
+
   if (audioProcessor.mWaveformDirty.exchange(false)) {
       std::vector<float> waveform = audioProcessor.getWaveformData();
       int currentSeqPos = audioProcessor.getSequencePosition(); // Use public getter
@@ -334,23 +355,28 @@ void AmenBreakChopperAudioProcessorEditor::resized() {
   webView.setBounds(getLocalBounds());
 }
 
-void AmenBreakChopperAudioProcessorEditor::parameterChanged(
-    const juce::String &parameterID, float newValue) {
-  sendParameterUpdate(parameterID, newValue);
-}
-
 void AmenBreakChopperAudioProcessorEditor::sendParameterUpdate(
     const juce::String &paramId, float newValue) {
-  juce::MessageManager::callAsync([this, paramId, newValue]() {
-    juce::DynamicObject *obj = new juce::DynamicObject();
-    obj->setProperty("id", paramId);
-    obj->setProperty("value", newValue);
+  // Directly evaluate since we are already on the Message Thread (TimerCallback)
+  // or inside a callAsync block.
+  // However, sendParameterUpdate might be called from syncAllParametersToFrontend which might be called from JS callback.
+  // JS callbacks run on message thread. Timer runs on message thread.
+  // So we don't need callAsync if called from these contexts.
 
-    juce::String js = "if (typeof window.juce_updateParameter === 'function') "
-                      "{ window.juce_updateParameter(" +
-                      juce::JSON::toString(juce::var(obj)) + "); }";
-    webView.evaluateJavascript(js);
-  });
+  // But wait, syncAllParametersToFrontend is called from requestInitialState which is a native function.
+  // Native functions are called on the Message Thread.
+
+  juce::DynamicObject *obj = new juce::DynamicObject();
+  obj->setProperty("id", paramId);
+  obj->setProperty("value", newValue);
+
+  juce::String js = "if (typeof window.juce_updateParameter === 'function') "
+                    "{ window.juce_updateParameter(" +
+                    juce::JSON::toString(juce::var(obj)) + "); }";
+
+  if (webView.isVisible()) {
+      webView.evaluateJavascript(js);
+  }
 }
 
 void AmenBreakChopperAudioProcessorEditor::syncAllParametersToFrontend() {

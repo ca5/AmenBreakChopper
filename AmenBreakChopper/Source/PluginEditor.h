@@ -16,7 +16,6 @@
  */
 class AmenBreakChopperAudioProcessorEditor
     : public juce::AudioProcessorEditor,
-      public juce::AudioProcessorValueTreeState::Listener,
       public juce::Timer {
 public:
   AmenBreakChopperAudioProcessorEditor(AmenBreakChopperAudioProcessor &);
@@ -26,13 +25,14 @@ public:
   void paint(juce::Graphics &) override;
   void resized() override;
   void timerCallback() override;
-  void parameterChanged(const juce::String &parameterID,
-                        float newValue) override;
 
 private:
   AmenBreakChopperAudioProcessor &audioProcessor;
 
   juce::WebBrowserComponent webView;
+
+  // Cache to track parameter changes
+  std::map<juce::String, float> lastParameterValues;
 
   // Helper to send events to JS
   void sendParameterUpdate(const juce::String &paramId, float newValue);
