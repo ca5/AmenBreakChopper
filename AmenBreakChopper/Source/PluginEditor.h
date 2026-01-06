@@ -10,6 +10,7 @@
 
 #include "PluginProcessor.h"
 #include <JuceHeader.h>
+#include <map>
 
 //==============================================================================
 /**

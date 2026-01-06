@@ -251,12 +251,15 @@ AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor(
 
   // Load from local ResourceProvider using callAsync to ensure the component is initialized
   // This helps prevent white screen issues on startup, especially on iOS
-  juce::MessageManager::callAsync([this] {
-    // #if JUCE_DEBUG && !JUCE_IOS
-    //   webView.goToURL("http://localhost:5173");
-    // #else
-    webView.goToURL(juce::WebBrowserComponent::getResourceProviderRoot());
-    // #endif
+  juce::Component::SafePointer<AmenBreakChopperAudioProcessorEditor> safeThis(this);
+  juce::MessageManager::callAsync([safeThis] {
+    if (safeThis != nullptr) {
+      // #if JUCE_DEBUG && !JUCE_IOS
+      //   safeThis->webView.goToURL("http://localhost:5173");
+      // #else
+      safeThis->webView.goToURL(juce::WebBrowserComponent::getResourceProviderRoot());
+      // #endif
+    }
   });
 
   // Initialize parameter cache
