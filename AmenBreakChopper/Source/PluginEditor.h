@@ -41,6 +41,11 @@ private:
   // Initial state setup
   void syncAllParametersToFrontend();
 
+  bool isWebViewLoaded{false};
+  int framesWaited{0};
+  bool hasFrontendConnected{false};
+  int retryCounter{0};
+
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(
       AmenBreakChopperAudioProcessorEditor)
 };

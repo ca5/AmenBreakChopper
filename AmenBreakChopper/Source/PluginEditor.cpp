@@ -236,11 +236,13 @@ AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor(
                     }
                     completion(juce::var());
                   })
+
               .withNativeFunction(
                   "requestInitialState",
                   [this](const juce::Array<juce::var> &,
                          juce::WebBrowserComponent::NativeFunctionCompletion
                              completion) {
+                    hasFrontendConnected = true;
                     syncAllParametersToFrontend();
                     completion(juce::var());
                   })) {
@@ -251,16 +253,16 @@ AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor(
 
   // Load from local ResourceProvider using callAsync to ensure the component is initialized
   // This helps prevent white screen issues on startup, especially on iOS
-  juce::Component::SafePointer<AmenBreakChopperAudioProcessorEditor> safeThis(this);
-  juce::MessageManager::callAsync([safeThis] {
-    if (safeThis != nullptr) {
-      // #if JUCE_DEBUG && !JUCE_IOS
-      //   safeThis->webView.goToURL("http://localhost:5173");
-      // #else
-      safeThis->webView.goToURL(juce::WebBrowserComponent::getResourceProviderRoot());
-      // #endif
-    }
-  });
+  // juce::Component::SafePointer<AmenBreakChopperAudioProcessorEditor> safeThis(this);
+  // juce::MessageManager::callAsync([safeThis] {
+  //   if (safeThis != nullptr) {
+  //     // #if JUCE_DEBUG && !JUCE_IOS
+  //     //   safeThis->webView.goToURL("http://localhost:5173");
+  //     // #else
+  //     safeThis->webView.goToURL(juce::WebBrowserComponent::getResourceProviderRoot());
+  //     // #endif
+  //   }
+  // });
 
   // Initialize parameter cache
   for (auto *param : audioProcessor.getParameters()) {
@@ -286,7 +288,7 @@ AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor(
       // should use SafePointer or WeakReference if strict, but
       // Component::BailOutChecker is built-in for some things. For now, simple
       // check:
-      if (webView.isVisible()) {
+      if (isWebViewLoaded) {
         juce::String js = "if (typeof window.juce_emitEvent === 'function') { "
                           "window.juce_emitEvent('note', { note1: " +
                           juce::String(note1) +
@@ -308,8 +310,31 @@ void AmenBreakChopperAudioProcessorEditor::paint(juce::Graphics &g) {
 }
 
 void AmenBreakChopperAudioProcessorEditor::timerCallback() {
+  if (!isWebViewLoaded) {
+    if (isShowing() && getWidth() > 0 && getHeight() > 0) {
+      if (framesWaited++ > 5) {
+        webView.goToURL(juce::WebBrowserComponent::getResourceProviderRoot());
+        isWebViewLoaded = true;
+        retryCounter = 0;
+      }
+    } else {
+      framesWaited = 0;
+    }
+    return;
+  }
+
+  // Retry logic if frontend fails to connect
+  if (isWebViewLoaded && !hasFrontendConnected) {
+    if (retryCounter++ > 90) { // ~3 seconds at 30Hz
+      juce::Logger::writeToLog(
+          "Frontend connection timed out. Reloading WebView...");
+      webView.goToURL(juce::WebBrowserComponent::getResourceProviderRoot());
+      retryCounter = 0;
+    }
+  }
+
   // Poll for parameter changes
-  if (webView.isVisible()) {
+  if (isWebViewLoaded) {
     for (auto *param : audioProcessor.getParameters()) {
       if (auto *p = dynamic_cast<juce::AudioProcessorParameterWithID *>(param)) {
         float val = p->getValue();
@@ -348,7 +373,7 @@ void AmenBreakChopperAudioProcessorEditor::timerCallback() {
       juce::String js = "if (typeof window.juce_emitEvent === 'function') { "
                         "window.juce_emitEvent('waveform', " + juce::JSON::toString(juce::var(obj)) + "); }";
       
-      if (webView.isVisible()) {
+      if (isWebViewLoaded) {
           webView.evaluateJavascript(js);
       }
   }
@@ -377,7 +402,7 @@ void AmenBreakChopperAudioProcessorEditor::sendParameterUpdate(
                     "{ window.juce_updateParameter(" +
                     juce::JSON::toString(juce::var(obj)) + "); }";
 
-  if (webView.isVisible()) {
+  if (isWebViewLoaded) {
       webView.evaluateJavascript(js);
   }
 }
