@@ -179,6 +179,17 @@ AmenBreakChopperAudioProcessor::createParameterLayout() {
   layout.add(std::make_unique<juce::AudioParameterChoice>(
       "colorTheme", "Color Theme", themeNames, 0));
 
+  // Sync Settings
+  juce::StringArray syncModes = {"Host", "MIDI Clock"};
+  layout.add(std::make_unique<juce::AudioParameterChoice>(
+      "bpmSyncMode", "BPM Sync Mode", syncModes, 0));
+
+  // Audio Input Settings
+  layout.add(std::make_unique<juce::AudioParameterBool>(
+      "inputEnabled", "Input Enabled", true));
+  layout.add(std::make_unique<juce::AudioParameterInt>(
+      "inputChannel", "Input Channel", 1, 16, 1));
+
   return layout;
 }
 
@@ -276,6 +287,10 @@ void AmenBreakChopperAudioProcessor::changeProgramName(
 //==============================================================================
 void AmenBreakChopperAudioProcessor::prepareToPlay(double sampleRate,
                                                    int samplesPerBlock) {
+  mTotalSamplesProcessed = 0;
+  mLastMidiTickSample = 0;
+  mMidiTickIntervals.fill(0);
+
   // OSC Sender
   auto hostAddress =
       mValueTreeState.state.getProperty("oscHostAddress").toString();
@@ -383,6 +398,48 @@ void AmenBreakChopperAudioProcessor::processBlock(
       (int)mValueTreeState.getRawParameterValue("midiInputChannel")->load();
   const int midiOutChannel =
       (int)mValueTreeState.getRawParameterValue("midiOutputChannel")->load();
+
+  // Update MIDI Clock Tracking
+  // MIDI Clock Tick (0xF8) sent 24 times per quarter note.
+  for (const auto metadata : midiMessages) {
+      auto message = metadata.getMessage();
+      if (message.isMidiClock()) {
+          // Calculate absolute sample position of this tick
+          uint64_t currentTickSample = mTotalSamplesProcessed + metadata.samplePosition;
+
+          if (mLastMidiTickSample > 0) {
+              uint64_t diffSamples = currentTickSample - mLastMidiTickSample;
+              if (diffSamples > 0) {
+                   // Convert to ms for storage in existing buffer structure or store samples
+                   // Let's store samples in the double buffer for now (cast to double)
+                   // Or convert to BPM directly?
+                   // Samples per tick.
+
+                   mMidiTickIntervals[mMidiTickIntervalIndex] = static_cast<double>(diffSamples);
+                   mMidiTickIntervalIndex = (mMidiTickIntervalIndex + 1) % mMidiTickIntervals.size();
+
+                   double sum = 0;
+                   int count = 0;
+                   for (auto d : mMidiTickIntervals) {
+                       if (d > 0.1) {
+                           sum += d;
+                           count++;
+                       }
+                   }
+
+                   if (count > 0) {
+                       double avgSamples = sum / count;
+                       // BPM = (SampleRate * 60) / (24 * samplesPerTick)
+                       double sr = getSampleRate();
+                       if (sr > 0 && avgSamples > 0) {
+                           mMidiClockBpm = (sr * 60.0) / (24.0 * avgSamples);
+                       }
+                   }
+              }
+          }
+          mLastMidiTickSample = currentTickSample;
+      }
+  }
 
   // Check for UI-triggered note invocation
   int uiNote = mUiTriggeredNote.exchange(-1);
@@ -555,7 +612,20 @@ void AmenBreakChopperAudioProcessor::processBlock(
 
   // --- Get musical time information ---
   const double sampleRate = getSampleRate();
-  const double bpm = positionInfo.getBpm().orFallback(120.0);
+
+  // Determine BPM source
+  const int syncMode = (int)mValueTreeState.getRawParameterValue("bpmSyncMode")->load();
+  double bpm = 120.0;
+
+  if (syncMode == 1) { // MIDI Clock
+      bpm = mMidiClockBpm;
+      // Sanity check
+      if (bpm < 20.0) bpm = 20.0;
+      if (bpm > 999.0) bpm = 999.0;
+  } else { // Host
+      bpm = positionInfo.getBpm().orFallback(120.0);
+  }
+
   const double ppqAtStartOfBlock =
       positionInfo.getPpqPosition().orFallback(0.0);
   const double ppqPerSample = bpm / (60.0 * sampleRate);
@@ -678,13 +748,55 @@ void AmenBreakChopperAudioProcessor::processBlock(
   auto *delayTimeParam = mValueTreeState.getRawParameterValue("delayTime");
   const int currentDelayTime = static_cast<int>(delayTimeParam->load());
 
+  const bool inputEnabled = (bool)*mValueTreeState.getRawParameterValue("inputEnabled");
+  const int inputChannelSelection = (int)*mValueTreeState.getRawParameterValue("inputChannel"); // 1-based index
+
   for (int sample = 0; sample < bufferLength; ++sample) {
     // Write input to the delay buffer for this sample
-    for (int channel = 0; channel < totalNumInputChannels; ++channel) {
-      const float *bufferData = buffer.getReadPointer(channel);
-      float *delayBufferData = mDelayBuffer.getWritePointer(channel);
-      delayBufferData[(mWritePosition + sample) % delayBufferLength] =
-          bufferData[sample];
+    // If input disabled, write silence.
+    // If enabled, map selected channel(s) to stereo buffer.
+
+    // Logic:
+    // If inputEnabled is false: write 0.
+    // If inputEnabled is true:
+    //   Read from inputChannelSelection (1-based).
+    //   If inputChannelSelection <= totalNumInputChannels, use it.
+    //   Else use 0 (silence).
+    //   We map Mono input to Stereo internal buffer (usually).
+
+    // Note: totalNumInputChannels is the number of channels in the 'buffer'.
+    // If we want to access channel N, we must ensure N < totalNumInputChannels.
+
+    int sourceLeftIdx = inputChannelSelection - 1;
+    int sourceRightIdx = inputChannelSelection; // If we assume stereo pairs (1/2, 3/4)?
+    // The requirement says "select input channel". It might mean Mono selection or Pair selection.
+    // "assuming 3 or more channels... select input channel".
+    // Usually choppers work on Stereo.
+    // Let's assume the selector selects the First Channel of the Pair.
+    // e.g. Input Channel = 1 -> Use 1 & 2.
+    // e.g. Input Channel = 3 -> Use 3 & 4.
+    // If only 1 channel available at that index, use Mono->Stereo.
+
+    for (int channel = 0; channel < mDelayBuffer.getNumChannels(); ++channel) { // Iterate over internal delay buffer channels (Stereo)
+        float inputSample = 0.0f;
+
+        if (inputEnabled) {
+             int sourceChannel = sourceLeftIdx + channel; // 0 for Left, 1 for Right (relative to selection)
+
+             // If User selects Ch 3.
+             // Left uses Ch 3. Right uses Ch 4.
+             // If Ch 4 doesn't exist, maybe duplicate Ch 3?
+
+             if (sourceChannel < totalNumInputChannels) {
+                 inputSample = buffer.getReadPointer(sourceChannel)[sample];
+             } else if (channel == 1 && sourceLeftIdx < totalNumInputChannels) {
+                 // Fallback for Right channel: if Ch+1 doesn't exist, use Ch (Mono -> Stereo)
+                 inputSample = buffer.getReadPointer(sourceLeftIdx)[sample];
+             }
+        }
+
+        float *delayBufferData = mDelayBuffer.getWritePointer(channel);
+        delayBufferData[(mWritePosition + sample) % delayBufferLength] = inputSample;
     }
 
     // If DelayTime is 0, bypass the effect (output is same as input)
@@ -721,6 +833,8 @@ void AmenBreakChopperAudioProcessor::processBlock(
   } else {
       mSamplesToNextBeat.store(0.0);
   }
+
+  mTotalSamplesProcessed += bufferLength;
 }
 
 //==============================================================================

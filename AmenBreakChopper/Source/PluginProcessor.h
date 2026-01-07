@@ -110,6 +110,13 @@ private:
   int mLastDelayAdjustBwdCcValue{0};
   int mLastDelayAdjust{0};
 
+  // --- MIDI Clock State ---
+  double mMidiClockBpm{120.0};
+  uint64_t mLastMidiTickSample{0};
+  std::array<double, 24> mMidiTickIntervals{0}; // Circular buffer for smoothing
+  int mMidiTickIntervalIndex{0};
+  uint64_t mTotalSamplesProcessed{0};
+
   // --- OSC State ---
   juce::OSCSender mSender;
   juce::OSCReceiver mReceiver;
