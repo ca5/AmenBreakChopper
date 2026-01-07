@@ -8,22 +8,20 @@
 
 #include "PluginEditor.h"
 #include "PluginProcessor.h"
+#include <juce_audio_plugin_client/Standalone/juce_StandaloneFilterWindow.h> // For StandalonePluginHolder
+#include <optional>
 
 //==============================================================================
 AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor(
     AmenBreakChopperAudioProcessor &p)
     : AudioProcessorEditor(&p), audioProcessor(p),
-      webView(
-          juce::WebBrowserComponent::Options()
+      webView(juce::WebBrowserComponent::Options()
 #if JUCE_WINDOWS
-              .withBackend(
-                  juce::WebBrowserComponent::Options::Backend::webview2)
-              .withWinWebView2Options(
-                  juce::WebBrowserComponent::Options::WinWebView2Options()
-                      .withUserDataFolder(juce::File::getSpecialLocation(
-                          juce::File::tempDirectory)))
+          .withBackend(juce::WebBrowserComponent::Options::Backend::webview2)
+          .withWinWebView2Options(juce::WebBrowserComponent::Options::WinWebView2Options()
+              .withUserDataFolder(juce::File::getSpecialLocation(juce::File::tempDirectory)))
 #endif
-              .withResourceProvider(
+          .withResourceProvider(
                   [this](const juce::String &url)
                       -> std::optional<juce::WebBrowserComponent::Resource> {
                     // 1. Determine relative path from URL
@@ -245,7 +243,16 @@ AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor(
                     hasFrontendConnected = true;
                     syncAllParametersToFrontend();
                     completion(juce::var());
-                  })) {
+                  }))
+{
+    // --- Research Step 1: Programmatic Unmute ---
+    if (juce::JUCEApplicationBase::isStandaloneApp())
+    {
+        if (auto* pluginHolder = juce::StandalonePluginHolder::getInstance())
+        {
+            pluginHolder->getMuteInputValue().setValue(false); 
+        }
+    }
   addAndMakeVisible(webView);
 
   setResizable(true, true);

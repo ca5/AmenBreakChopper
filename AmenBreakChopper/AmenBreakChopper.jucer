@@ -14,6 +14,8 @@
       <FILE id="n87HMS" name="PluginEditor.cpp" compile="1" resource="0"
             file="Source/PluginEditor.cpp"/>
       <FILE id="G9WeP8" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
+      <FILE id="STnDApp" name="StandaloneApp.cpp" compile="1" resource="0"
+            file="Source/StandaloneApp.cpp"/>
     </GROUP>
     <FILE id="qO1STI" name="icon.png" compile="0" resource="1" file="icon.png"/>
     <GROUP id="{926DC5E8-2D25-03F8-2D4A-1F8351267A66}" name="dist">
@@ -49,7 +51,7 @@
   <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1" JUCE_VST3_CAN_REPLACE_VST2="0"
                JUCE_WEB_BROWSER_COMPONENT="1"/>
   <EXPORTFORMATS>
-    <XCODE_MAC targetFolder="Builds/MacOSX" xcodeValidArchs="arm64,x86_64" extraDefs="JUCE_SILENCE_XCODE_15_LINKER_WARNING=1"
+    <XCODE_MAC targetFolder="Builds/MacOSX" xcodeValidArchs="arm64,x86_64" extraDefs="JUCE_SILENCE_XCODE_15_LINKER_WARNING=1;JUCE_USE_CUSTOM_PLUGIN_STANDALONE_APP=1"
                micPermissionNeeded="1" networkPermissionNeeded="1">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" targetName="ABC" defines="JUCE_MODAL_LOOPS_PERMITTED=1"
