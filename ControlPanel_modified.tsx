@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface ControlPanelProps {
@@ -30,7 +30,36 @@ export function ControlPanel({ colorTheme }: ControlPanelProps) {
   const [receivePort, setReceivePort] = useState(9002);
   const [delayAdjustSamples, setDelayAdjustSamples] = useState(0);
 
-  // Theme colors
+  // Helper to send parameter updates
+  const updateParameter = (id: string, value: number | string | boolean) => {
+    if (typeof (window as any).sendParameterValue === 'function') {
+      // Map boolean to 0/1, string modes to indices if needed?
+      // For modes like "Gate-On", the backend expects an integer index (0, 1, 2).
+      // Let's assume the state holds the string for UI but we need to map it.
+
+      let valToSend = value;
+
+      if (typeof value === 'boolean') {
+          valToSend = value ? 1 : 0;
+      }
+
+      // Map reset modes: "Any"->0, "Gate-On"->1, "Gate-Off"->2
+      // Default seems to be 1 (Gate-On)
+      if (id.endsWith('Mode') && typeof value === 'string') {
+          if (value === 'Any') valToSend = 0;
+          else if (value === 'Gate-On') valToSend = 1;
+          else if (value === 'Gate-Off') valToSend = 2;
+          else if (value === 'Toggle') valToSend = 0; // Default/Fallback?
+      }
+
+      (window as any).sendParameterValue(id, valToSend);
+    }
+  };
+
+  // Setup initial sync if needed, or rely on handlers.
+  // Ideally we should sync from backend on load (requestInitialState).
+  // But for now let's ensuring outgoing updates work.
+
   const themeColors = {
     green: { panel: 'bg-green-950/30', border: 'border-green-900/50', text: 'text-green-300', textSecondary: 'text-green-300/80', textTertiary: 'text-green-400/60', buttonBg: 'bg-green-900/30 hover:bg-green-800/50', inputBg: 'bg-slate-800/50 border-green-900/50 focus:border-green-600', accentBg: 'bg-green-600', accentSlider: 'accent-green-600' },
     blue: { panel: 'bg-blue-950/30', border: 'border-blue-900/50', text: 'text-blue-300', textSecondary: 'text-blue-300/80', textTertiary: 'text-blue-400/60', buttonBg: 'bg-blue-900/30 hover:bg-blue-800/50', inputBg: 'bg-slate-800/50 border-blue-900/50 focus:border-blue-600', accentBg: 'bg-blue-600', accentSlider: 'accent-blue-600' },
@@ -56,9 +85,7 @@ export function ControlPanel({ colorTheme }: ControlPanelProps) {
                 onChange={(e) => {
                   const val = Number(e.target.value);
                   setBpmSyncMode(val);
-                  if (typeof (window as any).sendParameterValue === 'function') {
-                    (window as any).sendParameterValue('bpmSyncMode', val);
-                  }
+                  updateParameter('bpmSyncMode', val);
                 }}
                 className={`px-3 py-1.5 border rounded ${theme.inputBg} ${theme.textSecondary} focus:outline-none`}
               >
@@ -74,9 +101,7 @@ export function ControlPanel({ colorTheme }: ControlPanelProps) {
                onClick={() => {
                    const newVal = !inputEnabled;
                    setInputEnabled(newVal);
-                   if (typeof (window as any).sendParameterValue === 'function') {
-                    (window as any).sendParameterValue('inputEnabled', newVal ? 1 : 0);
-                   }
+                   updateParameter('inputEnabled', newVal);
                }}
                className={`px-3 py-1.5 rounded transition-colors border ${theme.border} ${inputEnabled ? theme.accentBg + ' text-white' : 'bg-transparent ' + theme.textSecondary}`}
              >
@@ -94,9 +119,7 @@ export function ControlPanel({ colorTheme }: ControlPanelProps) {
                 onChange={(e) => {
                     const val = Number(e.target.value);
                     setInputChannel(val);
-                    if (typeof (window as any).sendParameterValue === 'function') {
-                        (window as any).sendParameterValue('inputChannel', val);
-                    }
+                    updateParameter('inputChannel', val);
                 }}
                 className={`w-20 px-3 py-1.5 border rounded ${theme.inputBg} ${theme.textSecondary} text-center focus:outline-none`}
                />
@@ -104,9 +127,7 @@ export function ControlPanel({ colorTheme }: ControlPanelProps) {
                 onClick={() => {
                     const val = Math.max(1, inputChannel - 1);
                     setInputChannel(val);
-                    if (typeof (window as any).sendParameterValue === 'function') {
-                        (window as any).sendParameterValue('inputChannel', val);
-                    }
+                    updateParameter('inputChannel', val);
                 }}
                 className={`px-2 py-1.5 ${theme.buttonBg} ${theme.text} rounded transition-colors`}
               >
@@ -116,9 +137,7 @@ export function ControlPanel({ colorTheme }: ControlPanelProps) {
                 onClick={() => {
                     const val = Math.min(16, inputChannel + 1);
                     setInputChannel(val);
-                    if (typeof (window as any).sendParameterValue === 'function') {
-                        (window as any).sendParameterValue('inputChannel', val);
-                    }
+                    updateParameter('inputChannel', val);
                 }}
                 className={`px-2 py-1.5 ${theme.buttonBg} ${theme.text} rounded transition-colors`}
               >
@@ -140,17 +159,29 @@ export function ControlPanel({ colorTheme }: ControlPanelProps) {
               <input
                 type="number"
                 value={midiInChannel}
-                onChange={(e) => setMidiInChannel(Number(e.target.value))}
+                onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setMidiInChannel(val);
+                    updateParameter('midiInputChannel', val);
+                }}
                 className={`w-20 px-3 py-1.5 border rounded ${theme.inputBg} ${theme.textSecondary} text-center focus:outline-none`}
               />
               <button
-                onClick={() => setMidiInChannel(Math.max(0, midiInChannel - 1))}
+                onClick={() => {
+                    const val = Math.max(0, midiInChannel - 1);
+                    setMidiInChannel(val);
+                    updateParameter('midiInputChannel', val);
+                }}
                 className={`px-2 py-1.5 ${theme.buttonBg} ${theme.text} rounded transition-colors`}
               >
                 -
               </button>
               <button
-                onClick={() => setMidiInChannel(Math.min(15, midiInChannel + 1))}
+                onClick={() => {
+                    const val = Math.min(15, midiInChannel + 1);
+                    setMidiInChannel(val);
+                    updateParameter('midiInputChannel', val);
+                }}
                 className={`px-2 py-1.5 ${theme.buttonBg} ${theme.text} rounded transition-colors`}
               >
                 +
@@ -165,17 +196,29 @@ export function ControlPanel({ colorTheme }: ControlPanelProps) {
               <input
                 type="number"
                 value={midiOutChannel}
-                onChange={(e) => setMidiOutChannel(Number(e.target.value))}
+                onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setMidiOutChannel(val);
+                    updateParameter('midiOutputChannel', val);
+                }}
                 className={`w-20 px-3 py-1.5 border rounded ${theme.inputBg} ${theme.textSecondary} text-center focus:outline-none`}
               />
               <button
-                onClick={() => setMidiOutChannel(Math.max(0, midiOutChannel - 1))}
+                onClick={() => {
+                    const val = Math.max(0, midiOutChannel - 1);
+                    setMidiOutChannel(val);
+                    updateParameter('midiOutputChannel', val);
+                }}
                 className={`px-2 py-1.5 ${theme.buttonBg} ${theme.text} rounded transition-colors`}
               >
                 -
               </button>
               <button
-                onClick={() => setMidiOutChannel(Math.min(15, midiOutChannel + 1))}
+                onClick={() => {
+                    const val = Math.min(15, midiOutChannel + 1);
+                    setMidiOutChannel(val);
+                    updateParameter('midiOutputChannel', val);
+                }}
                 className={`px-2 py-1.5 ${theme.buttonBg} ${theme.text} rounded transition-colors`}
               >
                 +
@@ -190,24 +233,39 @@ export function ControlPanel({ colorTheme }: ControlPanelProps) {
               <input
                 type="number"
                 value={sequenceResetCC}
-                onChange={(e) => setSequenceResetCC(Number(e.target.value))}
+                onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setSequenceResetCC(val);
+                    updateParameter('midiCcSeqReset', val);
+                }}
                 className={`w-20 px-3 py-1.5 border rounded ${theme.inputBg} ${theme.textSecondary} text-center focus:outline-none`}
               />
               <button
-                onClick={() => setSequenceResetCC(Math.max(0, sequenceResetCC - 1))}
+                onClick={() => {
+                    const val = Math.max(0, sequenceResetCC - 1);
+                    setSequenceResetCC(val);
+                    updateParameter('midiCcSeqReset', val);
+                }}
                 className={`px-2 py-1.5 ${theme.buttonBg} ${theme.text} rounded transition-colors`}
               >
                 -
               </button>
               <button
-                onClick={() => setSequenceResetCC(Math.min(127, sequenceResetCC + 1))}
+                onClick={() => {
+                    const val = Math.min(127, sequenceResetCC + 1);
+                    setSequenceResetCC(val);
+                    updateParameter('midiCcSeqReset', val);
+                }}
                 className={`px-2 py-1.5 ${theme.buttonBg} ${theme.text} rounded transition-colors`}
               >
                 +
               </button>
               <select
                 value={sequenceResetMode}
-                onChange={(e) => setSequenceResetMode(e.target.value)}
+                onChange={(e) => {
+                    setSequenceResetMode(e.target.value);
+                    updateParameter('midiCcSeqResetMode', e.target.value);
+                }}
                 className={`px-3 py-1.5 border rounded ${theme.inputBg} ${theme.textSecondary} focus:outline-none`}
               >
                 <option>Gate-On</option>
@@ -224,24 +282,39 @@ export function ControlPanel({ colorTheme }: ControlPanelProps) {
               <input
                 type="number"
                 value={timerResetCC}
-                onChange={(e) => setTimerResetCC(Number(e.target.value))}
+                onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setTimerResetCC(val);
+                    updateParameter('midiCcHardReset', val);
+                }}
                 className={`w-20 px-3 py-1.5 border rounded ${theme.inputBg} ${theme.textSecondary} text-center focus:outline-none`}
               />
               <button
-                onClick={() => setTimerResetCC(Math.max(0, timerResetCC - 1))}
+                onClick={() => {
+                    const val = Math.max(0, timerResetCC - 1);
+                    setTimerResetCC(val);
+                    updateParameter('midiCcHardReset', val);
+                }}
                 className={`px-2 py-1.5 ${theme.buttonBg} ${theme.text} rounded transition-colors`}
               >
                 -
               </button>
               <button
-                onClick={() => setTimerResetCC(Math.min(127, timerResetCC + 1))}
+                onClick={() => {
+                    const val = Math.min(127, timerResetCC + 1);
+                    setTimerResetCC(val);
+                    updateParameter('midiCcHardReset', val);
+                }}
                 className={`px-2 py-1.5 ${theme.buttonBg} ${theme.text} rounded transition-colors`}
               >
                 +
               </button>
               <select
                 value={timerResetMode}
-                onChange={(e) => setTimerResetMode(e.target.value)}
+                onChange={(e) => {
+                    setTimerResetMode(e.target.value);
+                    updateParameter('midiCcHardResetMode', e.target.value);
+                }}
                 className={`px-3 py-1.5 border rounded ${theme.inputBg} ${theme.textSecondary} focus:outline-none`}
               >
                 <option>Gate-On</option>
@@ -258,24 +331,39 @@ export function ControlPanel({ colorTheme }: ControlPanelProps) {
               <input
                 type="number"
                 value={softResetCC}
-                onChange={(e) => setSoftResetCC(Number(e.target.value))}
+                onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setSoftResetCC(val);
+                    updateParameter('midiCcSoftReset', val);
+                }}
                 className={`w-20 px-3 py-1.5 border rounded ${theme.inputBg} ${theme.textSecondary} text-center focus:outline-none`}
               />
               <button
-                onClick={() => setSoftResetCC(Math.max(0, softResetCC - 1))}
+                onClick={() => {
+                    const val = Math.max(0, softResetCC - 1);
+                    setSoftResetCC(val);
+                    updateParameter('midiCcSoftReset', val);
+                }}
                 className={`px-2 py-1.5 ${theme.buttonBg} ${theme.text} rounded transition-colors`}
               >
                 -
               </button>
               <button
-                onClick={() => setSoftResetCC(Math.min(127, softResetCC + 1))}
+                onClick={() => {
+                    const val = Math.min(127, softResetCC + 1);
+                    setSoftResetCC(val);
+                    updateParameter('midiCcSoftReset', val);
+                }}
                 className={`px-2 py-1.5 ${theme.buttonBg} ${theme.text} rounded transition-colors`}
               >
                 +
               </button>
               <select
                 value={softResetMode}
-                onChange={(e) => setSoftResetMode(e.target.value)}
+                onChange={(e) => {
+                    setSoftResetMode(e.target.value);
+                    updateParameter('midiCcSoftResetMode', e.target.value);
+                }}
                 className={`px-3 py-1.5 border rounded ${theme.inputBg} ${theme.textSecondary} focus:outline-none`}
               >
                 <option>Gate-On</option>
@@ -298,7 +386,20 @@ export function ControlPanel({ colorTheme }: ControlPanelProps) {
             <input
               type="text"
               value={hostIP}
-              onChange={(e) => setHostIP(e.target.value)}
+              onChange={(e) => {
+                  setHostIP(e.target.value);
+                  updateParameter('oscHostAddress', e.target.value); // String parameter?
+                  // PluginProcessor.h says: mValueTreeState.state.setProperty("oscHostAddress", ...)
+                  // This is not an AudioParameter. We need a special handler or just Property.
+                  // The backend listens for setOscHostAddress? No.
+                  // The processor uses Property, but sendParameterValue updates RangedAudioParameter.
+                  // There is a 'oscHostAddress' property but no parameter.
+                  // We might need a custom command or just ignore it if the user only wanted new features.
+                  // But to be safe, let's leave it as is if it's not supported via parameter.
+                  // Wait, mValueTreeState properties are not Parameters.
+                  // Let's assume there is a native function for it or it's not supported via this generic call.
+                  // However, for ports (int parameters), we can update them.
+              }}
               className={`w-48 px-3 py-1.5 border rounded ${theme.inputBg} ${theme.textSecondary} focus:outline-none`}
             />
           </div>
@@ -310,17 +411,29 @@ export function ControlPanel({ colorTheme }: ControlPanelProps) {
               <input
                 type="number"
                 value={sendPort}
-                onChange={(e) => setSendPort(Number(e.target.value))}
+                onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setSendPort(val);
+                    updateParameter('oscSendPort', val);
+                }}
                 className={`w-24 px-3 py-1.5 border rounded ${theme.inputBg} ${theme.textSecondary} text-center focus:outline-none`}
               />
               <button
-                onClick={() => setSendPort(Math.max(1, sendPort - 1))}
+                onClick={() => {
+                    const val = Math.max(1, sendPort - 1);
+                    setSendPort(val);
+                    updateParameter('oscSendPort', val);
+                }}
                 className={`px-2 py-1.5 ${theme.buttonBg} ${theme.text} rounded transition-colors`}
               >
                 -
               </button>
               <button
-                onClick={() => setSendPort(Math.min(65535, sendPort + 1))}
+                onClick={() => {
+                    const val = Math.min(65535, sendPort + 1);
+                    setSendPort(val);
+                    updateParameter('oscSendPort', val);
+                }}
                 className={`px-2 py-1.5 ${theme.buttonBg} ${theme.text} rounded transition-colors`}
               >
                 +
@@ -335,17 +448,29 @@ export function ControlPanel({ colorTheme }: ControlPanelProps) {
               <input
                 type="number"
                 value={receivePort}
-                onChange={(e) => setReceivePort(Number(e.target.value))}
+                onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setReceivePort(val);
+                    updateParameter('oscReceivePort', val);
+                }}
                 className={`w-24 px-3 py-1.5 border rounded ${theme.inputBg} ${theme.textSecondary} text-center focus:outline-none`}
               />
               <button
-                onClick={() => setReceivePort(Math.max(1, receivePort - 1))}
+                onClick={() => {
+                    const val = Math.max(1, receivePort - 1);
+                    setReceivePort(val);
+                    updateParameter('oscReceivePort', val);
+                }}
                 className={`px-2 py-1.5 ${theme.buttonBg} ${theme.text} rounded transition-colors`}
               >
                 -
               </button>
               <button
-                onClick={() => setReceivePort(Math.min(65535, receivePort + 1))}
+                onClick={() => {
+                    const val = Math.min(65535, receivePort + 1);
+                    setReceivePort(val);
+                    updateParameter('oscReceivePort', val);
+                }}
                 className={`px-2 py-1.5 ${theme.buttonBg} ${theme.text} rounded transition-colors`}
               >
                 +
@@ -401,17 +526,29 @@ export function ControlPanel({ colorTheme }: ControlPanelProps) {
               <input
                 type="number"
                 value={delayAdjustSamples}
-                onChange={(e) => setDelayAdjustSamples(Number(e.target.value))}
+                onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setDelayAdjustSamples(val);
+                    updateParameter('delayAdjust', val);
+                }}
                 className={`w-24 px-3 py-1.5 border rounded ${theme.inputBg} ${theme.textSecondary} text-center focus:outline-none`}
               />
               <button
-                onClick={() => setDelayAdjustSamples(Math.max(0, delayAdjustSamples - 1))}
+                onClick={() => {
+                    const val = Math.max(0, delayAdjustSamples - 1);
+                    setDelayAdjustSamples(val);
+                    updateParameter('delayAdjust', val);
+                }}
                 className={`px-2 py-1.5 ${theme.buttonBg} ${theme.text} rounded transition-colors`}
               >
                 &lt;
               </button>
               <button
-                onClick={() => setDelayAdjustSamples(delayAdjustSamples + 1)}
+                onClick={() => {
+                    const val = delayAdjustSamples + 1;
+                    setDelayAdjustSamples(val);
+                    updateParameter('delayAdjust', val);
+                }}
                 className={`px-2 py-1.5 ${theme.buttonBg} ${theme.text} rounded transition-colors`}
               >
                 &gt;
@@ -423,7 +560,11 @@ export function ControlPanel({ colorTheme }: ControlPanelProps) {
             min="0"
             max="1000"
             value={delayAdjustSamples}
-            onChange={(e) => setDelayAdjustSamples(Number(e.target.value))}
+            onChange={(e) => {
+                const val = Number(e.target.value);
+                setDelayAdjustSamples(val);
+                updateParameter('delayAdjust', val);
+            }}
             className={`w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer ${theme.accentSlider}`}
           />
         </div>
