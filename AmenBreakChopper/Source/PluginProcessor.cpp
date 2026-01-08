@@ -20,6 +20,13 @@ AmenBreakChopperAudioProcessor::AmenBreakChopperAudioProcessor()
   mReceiver.addListener(this);
   mValueTreeState.addParameterListener("oscSendPort", this);
   mValueTreeState.addParameterListener("oscReceivePort", this);
+
+  // --- Defaults for Standalone ---
+  if (juce::JUCEApplicationBase::isStandaloneApp()) {
+      // Default Input to OFF for Standalone to accept "silence" policy
+      if (auto* p = mValueTreeState.getParameter("inputEnabled"))
+          p->setValueNotifyingHost(0.0f);
+  }
 }
 
 AmenBreakChopperAudioProcessor::~AmenBreakChopperAudioProcessor() {}
@@ -131,6 +138,18 @@ AmenBreakChopperAudioProcessor::createParameterLayout() {
 
   layout.add(std::make_unique<juce::AudioParameterChoice>(
       "controlMode", "Control Mode", controlModes, 0));
+
+  // Standalone / Sync Settings
+  juce::StringArray bpmModes = {"Host", "MIDI Clock"};
+  layout.add(std::make_unique<juce::AudioParameterChoice>(
+      "bpmSyncMode", "BPM Sync Mode", bpmModes, 0));
+  layout.add(std::make_unique<juce::AudioParameterBool>(
+      "inputEnabled", "Input Enabled", true));
+  layout.add(std::make_unique<juce::AudioParameterInt>(
+      "inputChanL", "Input Channel L", 1, 8, 1));
+  layout.add(std::make_unique<juce::AudioParameterInt>(
+      "inputChanR", "Input Channel R", 1, 8, 2));
+
   layout.add(std::make_unique<juce::AudioParameterInt>("delayTime",
                                                        "Delay Time", 0, 15, 0));
   layout.add(std::make_unique<juce::AudioParameterInt>(
@@ -287,22 +306,19 @@ void AmenBreakChopperAudioProcessor::prepareToPlay(double sampleRate,
   // OSC Receiver
   auto receivePort =
       (int)mValueTreeState.getRawParameterValue("oscReceivePort")->load();
-  if (!mReceiver.connect(receivePort))
+  mReceiver.connect(receivePort);
     juce::Logger::writeToLog(
         "AmenBreakChopper: Failed to connect OSC receiver.");
 
+  mMidiClockTracker.reset();
   mSampleRate = sampleRate;
 
-  const int numChannels = getTotalNumInputChannels();
-  // Calculate buffer size for 16 eighth notes at a very slow BPM (e.g., 30 BPM)
-  // to ensure the buffer is always large enough.
-  // Max delay = 16 * (1/8 note) = 2 whole notes = 8 beats.
-  // Duration of 8 beats at 30 BPM = 8 * (60 / 30) = 8 * 2 = 16 seconds.
-  const double maxDelayTimeInSeconds = 16.0;
+  // We enforce a Stereo internal buffer for the delay/looping logic.
+  // Input routing will map selected inputs to this stereo pair.
   const int delayBufferSize =
-      static_cast<int>(maxDelayTimeInSeconds * sampleRate);
+      static_cast<int>(16.0 * sampleRate); // 16 seconds max delay
 
-  mDelayBuffer.setSize(numChannels, delayBufferSize);
+  mDelayBuffer.setSize(2, delayBufferSize); // Fixed 2 channels (Stereo)
   mDelayBuffer.clear();
 
   // Initialize sequencer state
@@ -334,19 +350,15 @@ bool AmenBreakChopperAudioProcessor::isBusesLayoutSupported(
   juce::ignoreUnused(layouts);
   return true;
 #else
-  // This is the place where you check if the layout is supported.
-  // In this template code we only support mono or stereo.
-  // Some plugin hosts, such as certain GarageBand versions, will only
-  // load plugins that support stereo bus layouts.
+  // Support Mono/Stereo Output
   if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono() &&
       layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
     return false;
 
-  // This checks if the input layout matches the output layout
-#if !JucePlugin_IsSynth
-  if (layouts.getMainOutputChannelSet() != layouts.getMainInputChannelSet())
-    return false;
-#endif
+  // Allow any Input configuration as long as it has at least as many channels as output (or more).
+  // Actually, we want to support e.g. 8 Inputs -> 2 Outputs.
+  if (layouts.getMainInputChannelSet().size() < layouts.getMainOutputChannelSet().size())
+      return false;
 
   return true;
 #endif
@@ -374,9 +386,26 @@ void AmenBreakChopperAudioProcessor::processBlock(
   auto totalNumInputChannels = getTotalNumInputChannels();
   auto totalNumOutputChannels = getTotalNumOutputChannels();
 
-  // --- Clear any unused output channels ---
+  // --- Clear unused output channels ---
   for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
     buffer.clear(i, 0, buffer.getNumSamples());
+
+  // --- Parameters ---
+  auto *bpmModeParam = mValueTreeState.getRawParameterValue("bpmSyncMode");
+  bool useMidiClock = (bpmModeParam->load() >= 0.5f);
+
+  auto *inputEnabledParam = mValueTreeState.getRawParameterValue("inputEnabled");
+  bool inputEnabled = (inputEnabledParam->load() > 0.5f);
+
+  // FIX: If input is disabled, strictly clear the main buffer.
+  // This prevents the "dry" signal from passing through when delayTime=0 or during processing gaps.
+  // We do this BEFORE any processing so the delay buffer also records silence (effectively).
+  if (!inputEnabled) {
+      buffer.clear();
+  }
+
+  int inputChanL = (int)mValueTreeState.getRawParameterValue("inputChanL")->load() - 1;
+  int inputChanR = (int)mValueTreeState.getRawParameterValue("inputChanR")->load() - 1;
 
   // --- Process incoming MIDI messages ---
   const int midiInChannel =
@@ -397,6 +426,19 @@ void AmenBreakChopperAudioProcessor::processBlock(
   juce::MidiBuffer processedMidi; // Create a new buffer for our generated notes
   for (const auto metadata : midiMessages) {
     auto message = metadata.getMessage();
+    
+    // --- MIDI Clock Handling ---
+    if (message.isMidiClock()) {
+         mMidiClockTracker.processClockMessage(juce::Time::getMillisecondCounterHiRes() * 0.001);
+    } else if (message.isMidiStart()) {
+         mSequencePosition = 0;
+         mNoteSequencePosition = 0;
+         mMidiClockPpq = 0.0;
+         mNextEighthNotePpq = 0.0;
+    } else if (message.isMidiStop()) {
+         // Optionally handle stop
+    }
+
     // Omni mode: if midiInChannel is 0, accept all channels.
     if (midiInChannel == 0 || message.getChannel() == midiInChannel) {
       if (message.isNoteOn()) {
@@ -505,13 +547,28 @@ void AmenBreakChopperAudioProcessor::processBlock(
   }
   midiMessages.clear(); // Clear the incoming buffer
 
-  // --- Get transport state from host ---
+  // --- Get transport state from host OR MIDI Clock ---
   juce::AudioPlayHead *playHead = getPlayHead();
   juce::AudioPlayHead::PositionInfo positionInfo;
   if (playHead != nullptr)
     positionInfo = playHead->getPosition().orFallback(positionInfo);
 
-  // On reset, turn off any hanging notes first
+  double bpm = 120.0;
+  double ppqAtStartOfBlock = 0.0;
+  bool isPlaying = true; // Default to running for internal/standalone
+
+  if (useMidiClock) {
+      bpm = mMidiClockTracker.detectedBpm;
+      ppqAtStartOfBlock = mMidiClockPpq;
+      // We assume playing if using MIDI clock logic (or check clock active?)
+      isPlaying = true; 
+  } else {
+      bpm = positionInfo.getBpm().orFallback(120.0);
+      ppqAtStartOfBlock = positionInfo.getPpqPosition().orFallback(0.0);
+      isPlaying = positionInfo.getIsPlaying();
+  }
+  
+  // Reset logic updates
   if (mHardResetQueued || mSoftResetQueued) {
     if (mLastNote1 >= 0)
       processedMidi.addEvent(
@@ -531,12 +588,7 @@ void AmenBreakChopperAudioProcessor::processBlock(
     mValueTreeState.getParameter("noteSequencePosition")
         ->setValueNotifyingHost(0.0f);
 
-    if (positionInfo.getIsPlaying()) {
-      const double ppqAtStartOfBlock =
-          positionInfo.getPpqPosition().orFallback(0.0);
-      const double bpm = positionInfo.getBpm().orFallback(120.0);
-      const double ppqPerSample = bpm / (60.0 * getSampleRate());
-
+    if (isPlaying) {
       // Also reset PPQ tracking to the current tick
       mNextEighthNotePpq = std::ceil(ppqAtStartOfBlock * 2.0) / 2.0;
 
@@ -545,41 +597,43 @@ void AmenBreakChopperAudioProcessor::processBlock(
           static_cast<juce::AudioParameterInt *>(
               mValueTreeState.getParameter("delayAdjust"))
               ->get();
-      mNextEighthNotePpq += currentDelayAdjust * ppqPerSample;
+      // Recalc ppqPerSample locally for this reset calculation
+      const double ppqPerSample_reset = bpm / (60.0 * getSampleRate());
+      mNextEighthNotePpq += currentDelayAdjust * ppqPerSample_reset;
       mLastDelayAdjust = currentDelayAdjust;
     }
     mHardResetQueued = false;
   }
 
-
-
-  // --- Get musical time information ---
+  // --- Get musical time information (Effective) ---
   const double sampleRate = getSampleRate();
-  const double bpm = positionInfo.getBpm().orFallback(120.0);
-  const double ppqAtStartOfBlock =
-      positionInfo.getPpqPosition().orFallback(0.0);
   const double ppqPerSample = bpm / (60.0 * sampleRate);
 
   // --- Handle transport jumps or looping ---
-  // If transport loops or jumps backwards, reset the next note position to
-  // align with the grid.
-  if (positionInfo.getIsLooping() ||
-      (ppqAtStartOfBlock < mNextEighthNotePpq - 0.5)) {
-    // Find the first 8th note position at or after the start of this block.
-    mNextEighthNotePpq = std::ceil(ppqAtStartOfBlock * 2.0) / 2.0;
+  if (isPlaying && !useMidiClock) {
+      if (positionInfo.getIsLooping() ||
+          (ppqAtStartOfBlock < mNextEighthNotePpq - 0.5)) {
+        mNextEighthNotePpq = std::ceil(ppqAtStartOfBlock * 2.0) / 2.0;
+      }
   }
 
   // Update BPM for UI
   mCurrentBpm.store(bpm);
-
-  // Check if we crossed a beat boundary (integer part of mNextEighthNotePpq changed?)
-  // Actually, we can just check if mSequencePosition changes in the loop below.
+  mUsingMidiClock.store(useMidiClock); // For UI
 
   // --- Sequencer Tick Logic (Block-based) ---
   const int bufferLength = buffer.getNumSamples();
   double ppqAtEndOfBlock = ppqAtStartOfBlock + (bufferLength * ppqPerSample);
+  
+  // Advance MIDI Clock PPQ for next block
+  if (useMidiClock) {
+      mMidiClockPpq = ppqAtEndOfBlock;
+  }
 
-  if (positionInfo.getIsPlaying()) {
+  if (isPlaying) {
+    // ... Logic continues below (reused) ...
+    // Note: We need to ensure the closing braces match the original structure.
+
 
   // --- Apply delayAdjust to sequencer phase ---
   auto *delayAdjustParam = static_cast<juce::AudioParameterInt *>(
@@ -679,31 +733,45 @@ void AmenBreakChopperAudioProcessor::processBlock(
   const int currentDelayTime = static_cast<int>(delayTimeParam->load());
 
   for (int sample = 0; sample < bufferLength; ++sample) {
-    // Write input to the delay buffer for this sample
-    for (int channel = 0; channel < totalNumInputChannels; ++channel) {
-      const float *bufferData = buffer.getReadPointer(channel);
-      float *delayBufferData = mDelayBuffer.getWritePointer(channel);
-      delayBufferData[(mWritePosition + sample) % delayBufferLength] =
-          bufferData[sample];
+    if (inputEnabled) {
+      // Input L
+      if (inputChanL < totalNumInputChannels) {
+         float inputVal = buffer.getReadPointer(inputChanL)[sample];
+         mDelayBuffer.getWritePointer(0)[(mWritePosition + sample) % delayBufferLength] = inputVal;
+      }
+      // Input R
+      if (inputChanR < totalNumInputChannels) {
+         float inputVal = buffer.getReadPointer(inputChanR)[sample];
+         mDelayBuffer.getWritePointer(1)[(mWritePosition + sample) % delayBufferLength] = inputVal;
+      }
+    } else {
+        // Silence input to delay buffer if disabled
+        mDelayBuffer.getWritePointer(0)[(mWritePosition + sample) % delayBufferLength] = 0.0f;
+        mDelayBuffer.getWritePointer(1)[(mWritePosition + sample) % delayBufferLength] = 0.0f;
     }
 
     // If DelayTime is 0, bypass the effect (output is same as input)
-    if (currentDelayTime != 0 && positionInfo.getIsPlaying()) {
+    if (currentDelayTime != 0 && isPlaying) {
       double eighthNoteTime = (60.0 / bpm) / 2.0;
       int delayTimeInSamples =
           static_cast<int>(eighthNoteTime * currentDelayTime * sampleRate);
 
-      for (int channel = 0; channel < totalNumInputChannels; ++channel) {
-        float *delayBufferData = mDelayBuffer.getWritePointer(channel);
-        auto *channelData = buffer.getWritePointer(channel);
-        const int readPosition =
+      for (int channel = 0; channel < totalNumOutputChannels; ++channel) {
+           if (channel >= 2) break; // Only mapped to first 2 outputs
+
+           const float* delayBufferData = mDelayBuffer.getReadPointer(channel);
+           auto* channelData = buffer.getWritePointer(channel);
+          
+           const int readPosition =
             (mWritePosition - delayTimeInSamples + sample + delayBufferLength) %
             delayBufferLength;
-        const float delayedSample = delayBufferData[readPosition];
-        channelData[sample] = delayedSample; // 100% Wet
+            
+           const float delayedSample = delayBufferData[readPosition];
+           channelData[sample] = delayedSample;
       }
     }
   }
+
 
   mWritePosition = (mWritePosition + bufferLength) % delayBufferLength;
   

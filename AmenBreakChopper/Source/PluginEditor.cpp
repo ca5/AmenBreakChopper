@@ -8,22 +8,20 @@
 
 #include "PluginEditor.h"
 #include "PluginProcessor.h"
+#include <juce_audio_plugin_client/Standalone/juce_StandaloneFilterWindow.h> // For StandalonePluginHolder
+#include <optional>
 
 //==============================================================================
 AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor(
     AmenBreakChopperAudioProcessor &p)
     : AudioProcessorEditor(&p), audioProcessor(p),
-      webView(
-          juce::WebBrowserComponent::Options()
+      webView(juce::WebBrowserComponent::Options()
 #if JUCE_WINDOWS
-              .withBackend(
-                  juce::WebBrowserComponent::Options::Backend::webview2)
-              .withWinWebView2Options(
-                  juce::WebBrowserComponent::Options::WinWebView2Options()
-                      .withUserDataFolder(juce::File::getSpecialLocation(
-                          juce::File::tempDirectory)))
+          .withBackend(juce::WebBrowserComponent::Options::Backend::webview2)
+          .withWinWebView2Options(juce::WebBrowserComponent::Options::WinWebView2Options()
+              .withUserDataFolder(juce::File::getSpecialLocation(juce::File::tempDirectory)))
 #endif
-              .withResourceProvider(
+          .withResourceProvider(
                   [this](const juce::String &url)
                       -> std::optional<juce::WebBrowserComponent::Resource> {
                     // 1. Determine relative path from URL
@@ -245,7 +243,16 @@ AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor(
                     hasFrontendConnected = true;
                     syncAllParametersToFrontend();
                     completion(juce::var());
-                  })) {
+                  }))
+{
+    // --- Research Step 1: Programmatic Unmute ---
+    if (juce::JUCEApplicationBase::isStandaloneApp())
+    {
+        if (auto* pluginHolder = juce::StandalonePluginHolder::getInstance())
+        {
+            pluginHolder->getMuteInputValue().setValue(false); 
+        }
+    }
   addAndMakeVisible(webView);
 
   setResizable(true, true);
@@ -380,7 +387,27 @@ void AmenBreakChopperAudioProcessorEditor::timerCallback() {
 }
 
 void AmenBreakChopperAudioProcessorEditor::resized() {
-  webView.setBounds(getLocalBounds());
+  auto bounds = getLocalBounds();
+
+#if JUCE_IOS
+  // "Edge-to-Edge" Logic:
+  // Since ComponentPeer::getSafeAreaInsets() is missing in this JUCE version,
+  // we calculate the safe area by intersecting our Screen Bounds with the 
+  // Display's userArea (which excludes the notch/home bar).
+  auto& displays = juce::Desktop::getInstance().getDisplays();
+  auto display = displays.getMainDisplay(); // validated as existing via StandaloneApp.cpp usage
+  
+  auto safeArea = display.userArea;
+  auto screenBounds = getScreenBounds();
+
+  if (!screenBounds.isEmpty()) {
+      auto safeIntersection = screenBounds.getIntersection(safeArea);
+      // Convert the safe intersection rect (Screen Coords) into Local Coords
+      bounds = getLocalArea(nullptr, safeIntersection);
+  }
+#endif
+
+  webView.setBounds(bounds);
 }
 
 void AmenBreakChopperAudioProcessorEditor::sendParameterUpdate(
