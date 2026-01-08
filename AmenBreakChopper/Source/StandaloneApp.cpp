@@ -18,6 +18,18 @@
 #include <juce_audio_plugin_client/Standalone/juce_StandaloneFilterWindow.h>
 
 //==============================================================================
+//==============================================================================
+class CustomLookAndFeel : public juce::LookAndFeel_V4
+{
+public:
+    void drawDocumentWindowTitleBar (juce::DocumentWindow& window, juce::Graphics& g,
+                                     int w, int h, int titleSpaceX, int titleSpaceW,
+                                     const juce::Image* icon, bool drawTitleTextOnLeft) override
+    {
+        g.fillAll (juce::Colours::black);
+    }
+};
+
 class CustomStandaloneWindow : public juce::DocumentWindow,
                                public juce::Button::Listener
 {
@@ -27,7 +39,23 @@ public:
                             juce::PropertySet* settingsToUse)
         : DocumentWindow (name, backgroundColour, DocumentWindow::allButtons)
     {
+#if JUCE_IOS
+        // Disable native title bar to avoid white system bars.
+        // We will handle Safe Area manually in the Editor.
+        setUsingNativeTitleBar (false);
+        setTitleBarHeight (60); 
+        
+        // Force title bar background to be explicitly black
+        setBackgroundColour(juce::Colours::black);
+        setColour(juce::ResizableWindow::backgroundColourId, juce::Colours::black);
+        
+        setFullScreen (true);
+        // Ensure bounds cover the screen
+        if (auto* display = juce::Desktop::getInstance().getDisplays().getPrimaryDisplay())
+            setBounds (display->totalArea);
+#else
         setUsingNativeTitleBar (true);
+#endif
         
         // 1. Initialize the Plugin Holder (The Engine)
         // getInstance() might return null if we haven't created it yet. 
@@ -38,7 +66,7 @@ public:
         pluginHolder->getMuteInputValue().setValue(false);
         
         // 3. Create and show the Plugin Editor
-        if (auto* processor = pluginHolder->getProcessor())
+        if (auto* processor = pluginHolder->processor.get())
         {
             // Reset logic or state if needed
             // processor->programmaticReset(); // Example if needed
@@ -77,7 +105,7 @@ public:
             }
         }
 
-        setResizable (true, true);
+        setResizable (false, false);
         
         // Restore window state
         if (settingsToUse != nullptr)
@@ -122,7 +150,7 @@ private:
         MainComponent(juce::AudioProcessorEditor* editorToOwn, CustomStandaloneWindow& w)
             : editor(editorToOwn), owner(w)
         {
-            addAndMakeVisible(editor);
+            addAndMakeVisible(editor.get());
             
             settingsBtn.setButtonText("⚙"); // Gear icon approximation
             settingsBtn.setTooltip("Audio Device Settings");
@@ -161,7 +189,7 @@ public:
     AmenBreakChopperStandaloneApp() {}
 
     const juce::String getApplicationName() override              { return JucePlugin_Name; }
-    const juce::String getApplicationVersion() override           { return JucePlugin_Version; }
+    const juce::String getApplicationVersion() override           { return JucePlugin_VersionString; }
     bool moreThanOneInstanceAllowed() override                    { return true; }
     void anotherInstanceStarted (const juce::String&) override    {}
 
@@ -181,13 +209,16 @@ public:
         if (auto* props = settings.getUserSettings())
         {
             props->setValue("muteAudioInput", false);
-            props->setShouldSave(true);
+            // props->setShouldSave(true);
         }
 
         // Create customized window that DOES NOT have the warning logic
         mainWindow.reset (new CustomStandaloneWindow (getApplicationName(),
                                                       juce::Colours::black,
                                                       settings.getUserSettings()));
+        
+        // Apply custom look and feel to ensure black title bar
+        mainWindow->setLookAndFeel(&customLookAndFeel);
     }
 
     void shutdown() override
@@ -205,6 +236,7 @@ public:
 
 private:
     juce::ApplicationProperties settings;
+    CustomLookAndFeel customLookAndFeel; // Keep instance alive
     std::unique_ptr<CustomStandaloneWindow> mainWindow;
 };
 

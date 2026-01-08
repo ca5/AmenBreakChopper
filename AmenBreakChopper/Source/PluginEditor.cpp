@@ -387,7 +387,27 @@ void AmenBreakChopperAudioProcessorEditor::timerCallback() {
 }
 
 void AmenBreakChopperAudioProcessorEditor::resized() {
-  webView.setBounds(getLocalBounds());
+  auto bounds = getLocalBounds();
+
+#if JUCE_IOS
+  // "Edge-to-Edge" Logic:
+  // Since ComponentPeer::getSafeAreaInsets() is missing in this JUCE version,
+  // we calculate the safe area by intersecting our Screen Bounds with the 
+  // Display's userArea (which excludes the notch/home bar).
+  auto& displays = juce::Desktop::getInstance().getDisplays();
+  auto display = displays.getMainDisplay(); // validated as existing via StandaloneApp.cpp usage
+  
+  auto safeArea = display.userArea;
+  auto screenBounds = getScreenBounds();
+
+  if (!screenBounds.isEmpty()) {
+      auto safeIntersection = screenBounds.getIntersection(safeArea);
+      // Convert the safe intersection rect (Screen Coords) into Local Coords
+      bounds = getLocalArea(nullptr, safeIntersection);
+  }
+#endif
+
+  webView.setBounds(bounds);
 }
 
 void AmenBreakChopperAudioProcessorEditor::sendParameterUpdate(
