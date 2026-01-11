@@ -1,0 +1,24 @@
+@import "./tailwind.css";
+@import "./theme.css";
+
+body, html {
+    background-color: black;
+    overscroll-behavior: none;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden; /* Lock viewport to prevent white background bounce */
+}
+
+#root {
+    width: 100%;
+    height: 100%;
+    overflow-y: hidden; /* Default to hidden, toggled by JS */
+    -webkit-overflow-scrolling: touch; /* Smooth momentum scrolling on iOS */
+}
+
+body {
+    user-select: none;
+    -webkit-user-select: none;
+}

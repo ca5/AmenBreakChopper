@@ -4,6 +4,4 @@
 [submodule "docs"]
 	path = docs
 	url = https://github.com/ca5/AmenBreakChopper_doc.git
-[submodule "ui"]
-	path = ui
-	url = https://github.com/ca5/AmenBreakChopper_ui
+
