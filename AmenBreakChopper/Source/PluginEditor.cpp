@@ -242,6 +242,18 @@ AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor(
                              completion) {
                     hasFrontendConnected = true;
                     syncAllParametersToFrontend();
+
+                    // Send Environment Info
+                    bool isStandalone = false;
+                    if (juce::JUCEApplicationBase::isStandaloneApp())
+                        isStandalone = true;
+                    
+                    juce::DynamicObject* obj = new juce::DynamicObject();
+                    obj->setProperty("isStandalone", isStandalone);
+                    juce::String js = "if (typeof window.juce_emitEvent === 'function') { "
+                                      "window.juce_emitEvent('environment', " + juce::JSON::toString(juce::var(obj)) + "); }";
+                    webView.evaluateJavascript(js);
+
                     completion(juce::var());
                   }))
 {
