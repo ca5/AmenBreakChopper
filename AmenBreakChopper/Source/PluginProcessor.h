@@ -12,6 +12,44 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_osc/juce_osc.h>
 
+struct MidiClockTracker {
+  double lastClockTime{0.0};
+  double detectedBpm{120.0};
+  int clockCount{0};
+  std::vector<double> clockIntervals;
+
+  void reset() {
+    lastClockTime = 0.0;
+    clockCount = 0;
+    clockIntervals.clear();
+  }
+
+  void processClockMessage(double time) {
+    if (lastClockTime > 0.0) {
+      double interval = time - lastClockTime;
+      if (interval > 0.0) {
+        clockIntervals.push_back(interval);
+        if (clockIntervals.size() > 24) { // Average over 24 clocks (1 beat)
+          clockIntervals.erase(clockIntervals.begin());
+        }
+
+        if (clockIntervals.size() >= 4) {
+          double sum = 0.0;
+          for (double i : clockIntervals)
+            sum += i;
+          double avgInterval = sum / clockIntervals.size();
+          // MIDI Clock is 24 ppq. BPM = 60 / (24 * interval)
+          if (avgInterval > 0.001) {
+            detectedBpm = 60.0 / (24.0 * avgInterval);
+          }
+        }
+      }
+    }
+    lastClockTime = time;
+    clockCount++;
+  }
+};
+
 //==============================================================================
 /**
  */
@@ -109,6 +147,11 @@ private:
   int mLastDelayAdjustFwdCcValue{0};
   int mLastDelayAdjustBwdCcValue{0};
   int mLastDelayAdjust{0};
+
+  // --- External Input & Clock State ---
+  MidiClockTracker mMidiClockTracker;
+  std::atomic<bool> mUsingMidiClock{false};
+  double mMidiClockPpq{0.0}; // Synthesized phase from MIDI clock ticks
 
   // --- OSC State ---
   juce::OSCSender mSender;
