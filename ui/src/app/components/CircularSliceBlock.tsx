@@ -71,13 +71,20 @@ export function CircularSliceBlock({
   const createWaveformPath = () => {
     const points = waveform.length;
     const waveformRadius = (innerRadius + outerRadius) / 2;
-    const amplitude = (outerRadius - innerRadius) * 0.35;
+    // Issue #30: Increased from 0.35 to 0.85 to make waveforms larger
+    const amplitude = (outerRadius - innerRadius) * 0.85;
 
     let path = '';
 
-    waveform.forEach((value, i) => {
+    waveform.forEach((val, i) => {
+      // Issue #30: Non-linear boost for clearer low-level details
+      // Simple signed power function: preserves sign, boosts small values
+      const sign = Math.sign(val);
+      const absVal = Math.abs(val);
+      const boostedVal = sign * Math.pow(absVal, 0.7); 
+      
       const angle = actualStartAngle + (i / (points - 1)) * actualAngleSpan;
-      const radius = waveformRadius + value * amplitude;
+      const radius = waveformRadius + boostedVal * amplitude;
       const point = polarToCartesian(angle, radius);
 
       if (i === 0) {

@@ -97,6 +97,105 @@ export function WaveformDisplay({ activeSlices, isPlaying, colorTheme, originalP
     }
   };
 
+  // Issue #24: Slide Interaction State
+  const [isSlideActive, setIsSlideActive] = useState(false);
+  const lastTriggeredSlice = useRef<number | null>(null);
+
+  // Helper to get slice index from check point
+  const getSliceFromPoint = (clientX: number, clientY: number) => {
+    if (!containerRef.current) return -1;
+    
+    // Get SVG bounds
+    const svg = containerRef.current.querySelector('svg');
+    if (!svg) return -1;
+    
+    const rect = svg.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    
+    // Relative coordinates
+    const x = clientX - centerX;
+    const y = clientY - centerY;
+    
+    // Calculate radius to ensure we are within the ring
+    // SVG is 400x400, Center 200,200. Inner R ~90, Outer R ~190.
+    // We need to map screen coordinates to SVG units roughly, or just check ratio.
+    const radius = Math.sqrt(x*x + y*y);
+    const maxRadius = Math.min(rect.width, rect.height) / 2;
+    const normRadius = radius / maxRadius; // 0 to 1
+    
+    // Inner radius is roughly 90/200 = 0.45, Outer is 190/200 = 0.95
+    if (normRadius < 0.4 || normRadius > 0.98) return -1;
+
+    // Calculate Angle
+    // atan2 returns -PI to PI. 0 is Right (3 o'clock).
+    // Our slices start at -11.25 deg (top-ish?) logic is in CircularSliceBlock
+    // slicesPerCircle = 16. anglePerSlice = 22.5.
+    // slice 0 is usually at top or right? 
+    // In CircularSliceBlock: startAngle = index * 22.5 + (-11.25)
+    // 0 deg is typically 3 o'clock in SVG.
+    // If index 0 startAngle is -11.25, that means it centers at 0 deg (Right).
+    // So Slice 0 is East. Slice 4 is South. Slice 8 is West. Slice 12 is North.
+    
+    let angleDeg = Math.atan2(y, x) * (180 / Math.PI);
+    // Normalize to 0-360
+    if (angleDeg < 0) angleDeg += 360;
+    
+    // Adjust for the offset (-11.25 start) => center of slice 0 is at 0 deg.
+    // The range for slice 0 is [-11.25, 11.25]. 
+    // So we add 11.25 to shift the boundary to 0.
+    // Issue Fix: Add 90 degrees because visual 0 is at Top (-90), but math 0 is Right (0).
+    // StartAngle -11.25 corresponds to the wedge varying around -90 deg.
+    // So we need to rotate our input by +90 to align with the visual rotation.
+    const shiftedAngle = (angleDeg + 90 + 11.25) % 360;
+    
+    const index = Math.floor(shiftedAngle / 22.5);
+    return index >= 0 && index < 16 ? index : -1;
+  };
+
+  const handleSlicePointerDown = (e: React.PointerEvent) => {
+    // Only engage if not touching the center button
+    // Center button radius is < 90 SVG units (approx 0.45 norm radius)
+    // The helper logic already filters < 0.4
+    
+    const index = getSliceFromPoint(e.clientX, e.clientY);
+    if (index >= 0) {
+       setIsSlideActive(true);
+       lastTriggeredSlice.current = index;
+       handleSliceClick(index);
+       (e.target as Element).setPointerCapture(e.pointerId);
+       e.preventDefault();
+    }
+  };
+
+  const handleSlicePointerMove = (e: React.PointerEvent) => {
+    if (!isSlideActive) return;
+    
+    const index = getSliceFromPoint(e.clientX, e.clientY);
+    
+    // Reverted to strict change detection to avoid message flooding
+    if (index >= 0 && index !== lastTriggeredSlice.current) {
+        lastTriggeredSlice.current = index;
+        handleSliceClick(index);
+    }
+  };
+
+  const handleSlicePointerUp = (e: React.PointerEvent) => {
+    if (isSlideActive) {
+        setIsSlideActive(false);
+        lastTriggeredSlice.current = null;
+        (e.target as Element).releasePointerCapture(e.pointerId);
+    }
+  };
+
+  // Issue Fix: Sync re-triggering to playhead updates (next beat)
+  // allowing hold-looping without flooding IPC
+  useEffect(() => {
+     if (isSlideActive && lastTriggeredSlice.current !== null) {
+         handleSliceClick(lastTriggeredSlice.current);
+     }
+  }, [originalPlayhead, isSlideActive]);
+
   // Center button interaction handlers
   const handleCenterButtonPointerDown = (e: React.PointerEvent) => {
     // console.log("[Waveform] Center Button Down"); // Verbose
@@ -140,8 +239,8 @@ export function WaveformDisplay({ activeSlices, isPlaying, colorTheme, originalP
       buttonOffsetY.set(0);
       buttonScale.set(1);
 
-      // If dragged more than 40px, it's a swipe - trigger soft reset
-      if (distance > 40) {
+      // If dragged more than 70px, it's a swipe - trigger soft reset
+      if (distance > 70) {
         handleSoftReset();
       } else {
         // Otherwise it's a click - sync playheads
@@ -204,7 +303,11 @@ export function WaveformDisplay({ activeSlices, isPlaying, colorTheme, originalP
           <div className="relative w-full h-full max-w-2xl max-h-2xl aspect-square">
             <svg
               viewBox="0 0 400 400"
-              className="w-full h-full"
+              className="w-full h-full outline-none"
+              onPointerDown={handleSlicePointerDown}
+              onPointerMove={handleSlicePointerMove}
+              onPointerUp={handleSlicePointerUp}
+              onPointerLeave={handleSlicePointerUp}
             >
               {/* Center circle decoration */}
               <circle
@@ -228,53 +331,15 @@ export function WaveformDisplay({ activeSlices, isPlaying, colorTheme, originalP
                   transformOrigin: 'center',
                 }}
               >
-                {/* Button background */}
+                {/* Button background - Issue #25: Plain circle, no icons */}
                 <motion.circle
                   cx="200"
                   cy="200"
                   r="60"
-                  fill="url(#centerButtonGradient)"
+                  fill={centerButtonSwipe ? theme.centerStroke : "url(#centerButtonGradient)"} 
                   stroke={theme.centerStroke}
                   strokeWidth="2"
                   className="transition-all"
-                  style={{
-                    scaleX: springScale,
-                    scaleY: springScale,
-                    transformOrigin: '200px 200px',
-                  }}
-                />
-                {/* Sync icon - two curved arrows */}
-                <motion.path
-                  d="M 200 160 A 30 30 0 0 1 230 190 L 225 185 M 200 240 A 30 30 0 0 1 170 210 L 175 215"
-                  fill="none"
-                  stroke={theme.centerStroke}
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  opacity="0.7"
-                  style={{
-                    scaleX: springScale,
-                    scaleY: springScale,
-                    transformOrigin: '200px 200px',
-                  }}
-                />
-                <motion.circle
-                  cx="233"
-                  cy="190"
-                  r="2"
-                  fill={theme.centerStroke}
-                  opacity="0.7"
-                  style={{
-                    scaleX: springScale,
-                    scaleY: springScale,
-                    transformOrigin: '200px 200px',
-                  }}
-                />
-                <motion.circle
-                  cx="167"
-                  cy="210"
-                  r="2"
-                  fill={theme.centerStroke}
-                  opacity="0.7"
                   style={{
                     scaleX: springScale,
                     scaleY: springScale,
