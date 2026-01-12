@@ -240,7 +240,7 @@ export function WaveformDisplay({ activeSlices, isPlaying, colorTheme, originalP
       buttonScale.set(1);
 
       // If dragged more than 70px, it's a swipe - trigger soft reset
-      if (distance > 70) {
+      if (distance > 90) {
         handleSoftReset();
       } else {
         // Otherwise it's a click - sync playheads
@@ -277,16 +277,16 @@ export function WaveformDisplay({ activeSlices, isPlaying, colorTheme, originalP
       <div className="h-full flex flex-col gap-3">
         {/* Title */}
         <div className="flex items-center justify-between">
-          <h2 className={`${theme.text} font-medium`}>Waveform Grid</h2>
+          <h2 className={`${theme.text} font-medium`}></h2>
           <div className="text-xs text-green-400/60 font-mono flex gap-3">
             {isPlaying && (
               <>
                 <span className="text-cyan-400">
-                  Original: {originalPlayhead + 1}/16
+                  orig: {originalPlayhead + 1}/16
                 </span>
                 {triggeredPlayhead !== null && (
                   <span className="text-pink-400">
-                    Triggered: {triggeredPlayhead + 1}/16
+                    trig: {triggeredPlayhead + 1}/16
                   </span>
                 )}
               </>

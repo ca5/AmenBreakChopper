@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { WaveformDisplay } from './components/WaveformDisplay';
 import { ControlPanel } from './components/ControlPanel';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, Settings, ArrowLeft } from 'lucide-react';
 import { useJuceBridge } from '../hooks/useJuceBridge';
 
 export default function App() {
   // Always playing in plugin mode
   const isPlaying = true;
+  const [view, setView] = useState<'main' | 'config'>('main');
 
   const [activeSlices, setActiveSlices] = useState<Set<number>>(
     new Set(Array.from({ length: 16 }, (_, i) => i)) // All slices active by default
@@ -18,7 +19,28 @@ export default function App() {
   const [triggeredPlayhead, setTriggeredPlayhead] = useState<number | null>(null);
 
   // Use the bridge
-  const { parameters, sendParameter, addEventListener, performHardReset } = useJuceBridge();
+  const { parameters, sendParameter, addEventListener, performHardReset, isStandalone } = useJuceBridge();
+
+  // Scroll locking logic for Standalone
+  useEffect(() => {
+    const root = document.getElementById('root');
+    if (root) {
+      if (!isStandalone) {
+         // Plugin mode: Always allow scrolling
+         root.style.overflowY = 'auto';
+      } else {
+         // Standalone mode: Only allow scrolling in Config view
+         if (view === 'main') {
+           // Reset scroll position before locking
+           window.scrollTo(0, 0);
+           root.scrollTop = 0;
+           root.style.overflowY = 'hidden';
+         } else {
+           root.style.overflowY = 'auto';
+         }
+      }
+    }
+  }, [view, isStandalone]);
 
   // Sync theme with JUCE parameter
   useEffect(() => {
@@ -45,10 +67,10 @@ export default function App() {
       }
 
       // Clear triggered playhead after a short delay for visual feedback
-      // (Optional: depending on how fast events come in. 
+      // (Optional: depending on how fast events come in.
       //  The previous logic might have relied on continuous updates or auto-clear.)
       //  Actually, if note1 is the current playing slice, we might want it to stay lit.
-      //  But usually 'note off' isn't sent here? 
+      //  But usually 'note off' isn't sent here?
       //  Let's keep it simple: just update state.
     });
 
@@ -168,112 +190,114 @@ export default function App() {
   return (
     <div className={`min-h-screen bg-gradient-to-br ${theme.bgGradient} flex flex-col`}>
       {/* Header */}
-      <header className={`px-6 py-4 border-b ${theme.borderColor} backdrop-blur-sm bg-slate-900/50`}>
+      <header className={`px-4 py-2 border-b ${theme.borderColor} backdrop-blur-sm bg-slate-900/50`}>
         <div className="flex items-center justify-between">
           <div className="flex-1">
-            <h1 className="text-white font-semibold flex items-center gap-3">
-              AmenBreakChopper
+            <h1 className="text-white text-sm font-medium flex items-center gap-3">
               <button
                 onClick={() => sendParameter('inputEnabled', inputEnabled ? 0 : 1)}
-                className={`ml-4 px-3 py-1 rounded-full text-[10px] font-bold tracking-wider border transition-all ${
+                className={`ml-3 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider border transition-all ${
                   inputEnabled
                     ? 'bg-green-500/20 text-green-400 border-green-500/50 shadow-[0_0_12px_rgba(34,197,94,0.3)]'
                     : 'bg-slate-800/50 text-slate-500 border-slate-700/50 hover:bg-slate-800'
                 }`}
               >
-                {inputEnabled ? 'ON' : 'MUTED'}
+                {inputEnabled ? 'EXT INPUT: ON' : 'MUTED'}
               </button>
             </h1>
           </div>
 
+           {/* Settings / Back Button */}
+           <button
+             onClick={() => setView(view === 'main' ? 'config' : 'main')}
+             className={`p-2 rounded-full hover:bg-white/10 ${theme.textPrimary} transition-colors`}
+           >
+             {view === 'main' ? <Settings className="w-5 h-5" /> : <ArrowLeft className="w-5 h-5" />}
+           </button>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col p-6 gap-6 overflow-hidden">
-        {/* Waveform Display */}
-        <WaveformDisplay
-          activeSlices={activeSlices}
-          isPlaying={isPlaying}
-          colorTheme={colorTheme}
-          originalPlayhead={originalPlayhead}
-          triggeredPlayhead={triggeredPlayhead}
-        />
+        {view === 'main' ? (
+          <>
+            {/* Waveform Display */}
+            <WaveformDisplay
+              activeSlices={activeSlices}
+              isPlaying={isPlaying}
+              colorTheme={colorTheme}
+              originalPlayhead={originalPlayhead}
+              triggeredPlayhead={triggeredPlayhead}
+            />
 
-        {/* Control Panel */}
-        {/* Performance Controls (Relocated) */}
-        <div className={`flex flex-col items-center justify-between px-4 py-3 gap-3 rounded-xl border ${theme.borderColor} ${theme.panelBg}`}>
-          <div className="flex items-center gap-4 w-full justify-between">
-            <span className={`text-xs font-bold tracking-wider ${theme.textSecondary}`}>TIMING</span>
+            {/* Performance Controls */}
+            <div className={`flex flex-col items-center justify-between px-4 py-3 gap-3 rounded-xl border ${theme.borderColor} ${theme.panelBg}`}>
+              <div className="flex items-center gap-4 w-full justify-between">
+                <span className={`text-xs font-bold tracking-wider ${theme.textSecondary}`}>TIMING</span>
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  performHardReset();
-                  handleResetDelayAdjust();
-                }}
-                className="px-4 py-1.5 rounded-md bg-red-600 hover:bg-red-500 text-white font-bold text-sm shadow-sm transition-transform active:scale-95 flex items-center gap-2"
-                title="Hard Reset & Zero Adjust"
-              >
-                <RotateCcw className="w-4 h-4" />
-                <span>HARD RESET</span>
-              </button>
-            </div>
-          </div>
-          <div className="flex items-center gap-4 w-full justify-end">
-            <div className="flex items-center gap-2 flex-1 max-w-xl bg-slate-900/40 p-1.5 rounded-lg border border-slate-700/30">
-              <button
-                onClick={() => sendParameter('delayAdjust', Math.max(-4096, delayAdjustValue - 1))}
-                className={`px-2 py-1.5 rounded hover:bg-white/10 ${theme.textSecondary} transition-colors font-mono text-xs`}
-              >
-                &lt;
-              </button>
-
-              <div className="flex-1 px-2">
-                <input
-                  type="range"
-                  min="-4096"
-                  max="4096"
-                  value={delayAdjustValue}
-                  onChange={(e) => sendParameter('delayAdjust', Number(e.target.value))}
-                  className={`w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer ${theme.accentColor === 'text-green-400' ? 'accent-green-500' : theme.accentColor === 'text-blue-400' ? 'accent-blue-500' : theme.accentColor === 'text-purple-400' ? 'accent-purple-500' : theme.accentColor === 'text-red-400' ? 'accent-red-500' : theme.accentColor === 'text-orange-400' ? 'accent-orange-500' : theme.accentColor === 'text-cyan-400' ? 'accent-cyan-500' : 'accent-pink-500'}`}
-                />
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      performHardReset();
+                      handleResetDelayAdjust();
+                    }}
+                    className="px-4 py-1.5 rounded-md bg-red-600 hover:bg-red-500 text-white font-bold text-sm shadow-sm transition-transform active:scale-95 flex items-center gap-2"
+                    title="Hard Reset & Zero Adjust"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    <span>HARD RESET</span>
+                  </button>
+                </div>
               </div>
+              <div className="flex items-center gap-4 w-full justify-end">
+                <div className="flex items-center gap-2 flex-1 max-w-xl bg-slate-900/40 p-1.5 rounded-lg border border-slate-700/30">
+                  <button
+                    onClick={() => sendParameter('delayAdjust', Math.max(-4096, delayAdjustValue - 1))}
+                    className={`px-2 py-1.5 rounded hover:bg-white/10 ${theme.textSecondary} transition-colors font-mono text-xs`}
+                  >
+                    &lt;
+                  </button>
 
-              <button
-                onClick={() => sendParameter('delayAdjust', Math.min(4096, delayAdjustValue + 1))}
-                className={`px-2 py-1.5 rounded hover:bg-white/10 ${theme.textSecondary} transition-colors font-mono text-xs`}
-              >
-                &gt;
-              </button>
+                  <div className="flex-1 px-2">
+                    <input
+                      type="range"
+                      min="-4096"
+                      max="4096"
+                      value={delayAdjustValue}
+                      onChange={(e) => sendParameter('delayAdjust', Number(e.target.value))}
+                      className={`w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer ${theme.accentColor === 'text-green-400' ? 'accent-green-500' : theme.accentColor === 'text-blue-400' ? 'accent-blue-500' : theme.accentColor === 'text-purple-400' ? 'accent-purple-500' : theme.accentColor === 'text-red-400' ? 'accent-red-500' : theme.accentColor === 'text-orange-400' ? 'accent-orange-500' : theme.accentColor === 'text-cyan-400' ? 'accent-cyan-500' : 'accent-pink-500'}`}
+                    />
+                  </div>
 
-              <div className="w-px h-4 bg-slate-600/50 mx-1"></div>
+                  <button
+                    onClick={() => sendParameter('delayAdjust', Math.min(4096, delayAdjustValue + 1))}
+                    className={`px-2 py-1.5 rounded hover:bg-white/10 ${theme.textSecondary} transition-colors font-mono text-xs`}
+                  >
+                    &gt;
+                  </button>
 
-              <input
-                type="number"
-                value={delayAdjustValue}
-                onChange={(e) => sendParameter('delayAdjust', Math.min(4096, Math.max(-4096, Number(e.target.value))))}
-                className="w-16 bg-transparent text-right font-mono text-xs focus:outline-none text-slate-200"
-              />
-              <span className={`text-[10px] ${theme.textSecondary} ml-0.5 mr-2`}>smpl</span>
+                  <div className="w-px h-4 bg-slate-600/50 mx-1"></div>
+
+                  <input
+                    type="number"
+                    value={delayAdjustValue}
+                    onChange={(e) => sendParameter('delayAdjust', Math.min(4096, Math.max(-4096, Number(e.target.value))))}
+                    className="w-16 bg-transparent text-right font-mono text-xs focus:outline-none text-slate-200"
+                  />
+                  <span className={`text-[10px] ${theme.textSecondary} ml-0.5 mr-2`}>smpl</span>
+                </div>
+              </div>
             </div>
-          </div>
-
-
-          {/* Separate Slice Reset Button (Optional: Keep here or leave in header? User said "Hard Reset" integrate. I'll keep Slice Reset in Header as it matches "Overview" context, or move it here for total unification. I'll leave Slice Reset in header for now as the request focused on Hard Reset/Adjust.) */}
-        </div>
-
-        <ControlPanel colorTheme={colorTheme} onThemeChange={handleThemeChange} />
+          </>
+        ) : (
+          <ControlPanel colorTheme={colorTheme} onThemeChange={handleThemeChange} />
+        )}
       </main>
 
       {/* Footer Info */}
       <footer className={`px-6 py-3 border-t ${theme.borderColor} bg-slate-900/50`}>
         <div className={`flex items-center justify-between text-xs ${theme.textTertiary}`}>
-          <span>{activeSlices.size} / 16 slices active</span>
-          <div className="flex gap-4">
-            <span>Original: {originalPlayhead + 1}/16</span>
-            <span>Triggered: {triggeredPlayhead !== null ? triggeredPlayhead + 1 : '-'}/16</span>
-          </div>
+        produced by Ca5
         </div>
       </footer>
     </div>

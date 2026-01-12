@@ -8,35 +8,13 @@ interface ControlPanelProps {
 }
 
 export function ControlPanel({ colorTheme, onThemeChange }: ControlPanelProps) {
-  const { parameters, sendParameter, isStandalone } = useJuceBridge();
+  const { parameters, sendParameter } = useJuceBridge();
   const [currentPage, setCurrentPage] = useState(0);
-  const [isConfigOpen, setIsConfigOpen] = useState(false);
-
-  // Toggle scrolling on #root based on isConfigOpen and isStandalone
-  useEffect(() => {
-    const root = document.getElementById('root');
-    if (root) {
-      if (!isStandalone) {
-         // Plugin mode: Always allow scrolling
-         root.style.overflowY = 'auto';
-      } else {
-         // Standalone mode: Only allow scrolling when Config is open
-         if (!isConfigOpen) {
-           // Reset scroll position before locking
-           window.scrollTo(0, 0); 
-           root.scrollTop = 0;    
-           root.style.overflowY = 'hidden';
-         } else {
-           root.style.overflowY = 'auto';
-         }
-      }
-    }
-  }, [isConfigOpen, isStandalone]);
 
   // Helpers for parameter mapping
   const getParam = (id: string, def: number) => parameters[id] ?? def;
   const setParam = (id: string, val: number) => {
-    console.log(`[UI] Parameter Change - ID: ${id}, Value: ${val}`);
+    // console.log(`[UI] Parameter Change - ID: ${id}, Value: ${val}`);
     sendParameter(id, val);
   };
 
@@ -62,11 +40,9 @@ export function ControlPanel({ colorTheme, onThemeChange }: ControlPanelProps) {
 
   const oscSendPrt = getIntParam('oscSendPort', 9001);
   const oscRecvPrt = getIntParam('oscReceivePort', 9002);
-  const dlyAdj = getIntParam('delayAdjust', 0);
 
   // Standalone Params
   const bpmMode = getParam('bpmSyncMode', 0); // 0=Host, 1=MIDI
-  const inputEnabled = getParam('inputEnabled', 1) > 0.5;
   const inputChanL = getIntParam('inputChanL', 1);
   const inputChanR = getIntParam('inputChanR', 2);
 
@@ -123,7 +99,7 @@ export function ControlPanel({ colorTheme, onThemeChange }: ControlPanelProps) {
           </div>
 
           {/* Sequence Reset CC */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-1.5">
             <label className={`text-sm ${theme.textSecondary}`}>Sequence Reset CC</label>
             <div className="flex items-center gap-2">
               <input
@@ -137,7 +113,7 @@ export function ControlPanel({ colorTheme, onThemeChange }: ControlPanelProps) {
               <select
                 value={modeOptions[seqResetModeVal]}
                 onChange={(e) => setParam('midiCcSeqResetMode', modeOptions.indexOf(e.target.value))}
-                className={`px-3 py-1.5 border rounded ${theme.inputBg} ${theme.textSecondary} focus:outline-none`}
+                className={`flex-1 px-2 py-1.5 border rounded ${theme.inputBg} ${theme.textSecondary} focus:outline-none min-w-[80px] text-xs`}
               >
                 {modeOptions.map(opt => <option key={opt}>{opt}</option>)}
               </select>
@@ -145,7 +121,7 @@ export function ControlPanel({ colorTheme, onThemeChange }: ControlPanelProps) {
           </div>
 
           {/* Hard Reset CC */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-1.5">
             <label className={`text-sm ${theme.textSecondary}`}>Hard Reset CC</label>
             <div className="flex items-center gap-2">
               <input
@@ -159,7 +135,7 @@ export function ControlPanel({ colorTheme, onThemeChange }: ControlPanelProps) {
               <select
                 value={modeOptions[hrdResetModeVal]}
                 onChange={(e) => setParam('midiCcHardResetMode', modeOptions.indexOf(e.target.value))}
-                className={`px-3 py-1.5 border rounded ${theme.inputBg} ${theme.textSecondary} focus:outline-none`}
+                className={`flex-1 px-2 py-1.5 border rounded ${theme.inputBg} ${theme.textSecondary} focus:outline-none min-w-[80px] text-xs`}
               >
                 {modeOptions.map(opt => <option key={opt}>{opt}</option>)}
               </select>
@@ -167,7 +143,7 @@ export function ControlPanel({ colorTheme, onThemeChange }: ControlPanelProps) {
           </div>
 
           {/* Soft Reset CC */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-1.5">
             <label className={`text-sm ${theme.textSecondary}`}>Soft Reset CC</label>
             <div className="flex items-center gap-2">
               <input
@@ -181,7 +157,7 @@ export function ControlPanel({ colorTheme, onThemeChange }: ControlPanelProps) {
               <select
                 value={modeOptions[sftResetModeVal]}
                 onChange={(e) => setParam('midiCcSoftResetMode', modeOptions.indexOf(e.target.value))}
-                className={`px-3 py-1.5 border rounded ${theme.inputBg} ${theme.textSecondary} focus:outline-none`}
+                className={`flex-1 px-2 py-1.5 border rounded ${theme.inputBg} ${theme.textSecondary} focus:outline-none min-w-[80px] text-xs`}
               >
                 {modeOptions.map(opt => <option key={opt}>{opt}</option>)}
               </select>
@@ -309,35 +285,26 @@ export function ControlPanel({ colorTheme, onThemeChange }: ControlPanelProps) {
     },
   ];
 
-  const { performHardReset } = useJuceBridge();
-
   return (
-    <div className={`flex flex-col gap-6 ${theme.panel} rounded-2xl p-6 border ${theme.border} backdrop-blur-sm`}>
+    <div className={`flex flex-col gap-6 ${theme.panel} rounded-2xl p-6 border ${theme.border} backdrop-blur-sm shadow-xl`}>
+      
+      {/* Configuration Header */}
+      <div className="flex items-center justify-between mb-2">
+        <h2 className={`text-lg font-bold ${theme.text} flex items-center gap-2`}>
+            Configuration
+        </h2>
+      </div>
 
-      {/* 2. Collapsible Configuration */}
-      <div className={`rounded-xl border ${theme.border} overflow-hidden`}>
-        <button
-          onClick={() => setIsConfigOpen(!isConfigOpen)}
-          className={`w-full flex items-center justify-between p-4 ${theme.buttonBg} ${theme.text} transition-colors`}
-        >
-          <div className="flex items-center gap-2">
-            <Settings className="w-4 h-4" />
-            <span className="font-medium text-sm">Configuration</span>
-          </div>
-          {isConfigOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-        </button>
+      <div className={`p-4 ${theme.inputBg} rounded-xl border ${theme.border}`}>
 
-        {isConfigOpen && (
-          <div className={`p-4 ${theme.inputBg}`}>
-
-             {/* Theme Selection */}
-             <div className="flex items-center justify-between mb-6">
-              <span className={`text-sm ${theme.textSecondary}`}>Color Theme</span>
-              <select
+            {/* Theme Selection */}
+            <div className="flex items-center justify-between mb-6">
+            <span className={`text-sm ${theme.textSecondary}`}>Color Theme</span>
+            <select
                 value={colorTheme}
                 onChange={(e) => onThemeChange(e.target.value as any)}
                 className={`px-3 py-1.5 rounded ${theme.inputBg} border ${theme.border} ${theme.text} text-xs focus:outline-none`}
-              >
+            >
                 <option value="green">Green</option>
                 <option value="blue">Blue</option>
                 <option value="purple">Purple</option>
@@ -345,7 +312,7 @@ export function ControlPanel({ colorTheme, onThemeChange }: ControlPanelProps) {
                 <option value="orange">Orange</option>
                 <option value="cyan">Cyan</option>
                 <option value="pink">Pink</option>
-              </select>
+            </select>
             </div>
 
             <div className={`h-px ${theme.border} mb-6`} />
@@ -356,27 +323,27 @@ export function ControlPanel({ colorTheme, onThemeChange }: ControlPanelProps) {
                 
                 {/* BPM Sync Mode */}
                 <div className="flex items-center justify-between mb-3">
-                  <span className={`text-sm ${theme.textSecondary}`}>BPM Sync Source</span>
-                  <div className="flex gap-2">
+                    <span className={`text-sm ${theme.textSecondary}`}>BPM Sync Source</span>
+                    <div className="flex gap-2">
                     <button
-                      onClick={() => setParam('bpmSyncMode', 0)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${bpmMode < 0.5
+                        onClick={() => setParam('bpmSyncMode', 0)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${bpmMode < 0.5
                         ? `${theme.accentBg} text-white`
                         : `bg-slate-700/50 ${theme.text}`
                         }`}
                     >
-                      HOST
+                        HOST
                     </button>
                     <button
-                      onClick={() => setParam('bpmSyncMode', 1)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${bpmMode >= 0.5
+                        onClick={() => setParam('bpmSyncMode', 1)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${bpmMode >= 0.5
                         ? `${theme.accentBg} text-white`
                         : `bg-slate-700/50 ${theme.text}`
                         }`}
                     >
-                      MIDI CLOCK
+                        MIDI CLOCK
                     </button>
-                  </div>
+                    </div>
                 </div>
 
                 {/* Input Channels (Restored) */}
@@ -392,8 +359,8 @@ export function ControlPanel({ colorTheme, onThemeChange }: ControlPanelProps) {
                                 <button onClick={() => setParam('inputChanL', Math.min(8, inputChanL + 1))} className={`w-6 py-1 ${theme.buttonBg} ${theme.text} rounded-r text-xs`}>+</button>
                             </div>
                         </div>
-                         {/* R */}
-                         <div className="flex items-center gap-1">
+                            {/* R */}
+                            <div className="flex items-center gap-1">
                             <span className="text-[10px] text-slate-500">R:</span>
                             <div className="flex items-center">
                                 <button onClick={() => setParam('inputChanR', Math.max(1, inputChanR - 1))} className={`w-6 py-1 ${theme.buttonBg} ${theme.text} rounded-l text-xs`}>-</button>
@@ -403,77 +370,51 @@ export function ControlPanel({ colorTheme, onThemeChange }: ControlPanelProps) {
                         </div>
                     </div>
                 </div>
-
-                {/* Input Controls REMOVED from here (Moved to Top Header in App.tsx) */}
             </div>
 
             <div className={`h-px ${theme.border} mb-6`} />
 
             {/* Control Mode (Moved Here) */}
             <div className="flex items-center justify-between mb-6">
-              <span className={`text-sm ${theme.textSecondary}`}>Control Mode:</span>
-              <div className="flex gap-2">
+                <span className={`text-sm ${theme.textSecondary}`}>Control Mode:</span>
+                <div className="flex gap-2">
                 <button
-                  onClick={() => {
+                    onClick={() => {
                     setParam('controlMode', 0); // MIDI
                     setCurrentPage(0);
-                  }}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${controlMode === 'MIDI'
+                    }}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${controlMode === 'MIDI'
                     ? `${theme.accentBg} text-white`
                     : `bg-slate-700/50 ${theme.text}`
                     }`}
                 >
-                  MIDI
+                    MIDI
                 </button>
                 <button
-                  onClick={() => {
+                    onClick={() => {
                     setParam('controlMode', 1); // OSC
                     setCurrentPage(0);
-                  }}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${controlMode === 'OSC'
+                    }}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${controlMode === 'OSC'
                     ? `${theme.accentBg} text-white`
                     : `bg-slate-700/50 ${theme.text}`
                     }`}
                 >
-                  OSC
+                    OSC
                 </button>
-              </div>
+                </div>
             </div>
 
             <div className={`h-px ${theme.border} mb-6`} />
 
-            {/* Page Header within Collapsible */}
+            {/* Page Header within Container */}
             <div className="flex items-center justify-between mb-4">
-              <h2 className={`${theme.text} font-medium text-sm`}>{pages[currentPage].title}</h2>
-              {/* Only show pagination if there are multiple pages (reserved for future use, we removed strict pagination logic but kept buttons just in case if future expansion wants it) */
-                pages.length > 1 && (
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
-                      disabled={currentPage === 0}
-                      className={`p-1.5 rounded-lg ${theme.buttonBg} ${theme.text} disabled:opacity-30 disabled:cursor-not-allowed`}
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </button>
-                    <span className={`text-xs ${theme.textTertiary} font-mono`}>
-                      {currentPage + 1} / {pages.length}
-                    </span>
-                    <button
-                      onClick={() => setCurrentPage(Math.min(pages.length - 1, currentPage + 1))}
-                      disabled={currentPage === pages.length - 1}
-                      className={`p-1.5 rounded-lg ${theme.buttonBg} ${theme.text} disabled:opacity-30 disabled:cursor-not-allowed`}
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
+                <h2 className={`${theme.text} font-medium text-sm`}>{pages[currentPage].title}</h2>
             </div>
 
             {/* Content */}
             {pages[currentPage].content}
 
-          </div>
-        )}
       </div>
     </div>
   );
