@@ -14,11 +14,31 @@ declare global {
         performHardReset?: () => void;
         triggerNoteFromUi?: (noteNumber: number) => void;
         requestInitialState?: () => void;
+        getDeviceList?: () => void;
+        setAudioDevice?: (name: string) => void;
+        setMidiInput?: (id: string, enabled: boolean) => void;
         __JUCE__?: {
             postMessage: (data: string) => void;
         };
     }
 }
+
+// Helper to invoke native functions via low-level IPC
+const invokeNative = (name: string, ...args: any[]) => {
+    if (window.__JUCE__ && window.__JUCE__.postMessage) {
+        const payload = {
+            name: name,
+            params: args,
+            resultId: Date.now()
+        };
+        window.__JUCE__.postMessage(JSON.stringify({
+            eventId: "__juce__invoke",
+            payload: payload
+        }));
+    } else {
+        console.warn(`[Bridge] Cannot invoke ${name}: Not in JUCE environment.`);
+    }
+};
 
 type EventCallback = (data: any) => void;
 type ParameterCallback = (id: string, value: number) => void;
@@ -183,6 +203,45 @@ export const useJuceBridge = () => {
         }
     }, []);
 
+    const getDeviceList = useCallback(() => {
+        if (window.getDeviceList) window.getDeviceList();
+        else if (window.__JUCE__?.postMessage) {
+             window.__JUCE__.postMessage(JSON.stringify({ eventId: "__juce__invoke", payload: { name: "getDeviceList", params: [], resultId: 0 } }));
+        }
+    }, []);
+
+    const setAudioDevice = useCallback((name: string) => {
+        if (window.setAudioDevice) window.setAudioDevice(name);
+        else if (window.__JUCE__?.postMessage) {
+             window.__JUCE__.postMessage(JSON.stringify({ eventId: "__juce__invoke", payload: { name: "setAudioDevice", params: [name], resultId: 0 } }));
+        }
+    }, []);
+
+    const setMidiInput = useCallback((id: string, enabled: boolean) => {
+        if (window.setMidiInput) window.setMidiInput(id, enabled);
+        else if (window.__JUCE__?.postMessage) {
+             window.__JUCE__.postMessage(JSON.stringify({ eventId: "__juce__invoke", payload: { name: "setMidiInput", params: [id, enabled], resultId: 0 } }));
+        }
+    }, []);
+
+    const openBluetoothPairingDialog = useCallback(() => {
+        console.log("Frontend: openBluetoothPairingDialog called via invokeNative");
+        
+        if (window.__JUCE__ && window.__JUCE__.postMessage) {
+            const payload = {
+                name: "openBluetoothPairingDialog",
+                params: [],
+                resultId: Date.now()
+            };
+            window.__JUCE__.postMessage(JSON.stringify({
+                eventId: "__juce__invoke",
+                payload: payload
+            }));
+        } else {
+            console.warn("[Bridge] Cannot invoke openBluetoothPairingDialog: Not in JUCE environment.");
+        }
+    }, []);
+
     return {
         parameters,
         isStandalone,
@@ -192,6 +251,34 @@ export const useJuceBridge = () => {
         performSequenceReset,
         performSoftReset,
         performHardReset,
-        triggerNote
+        triggerNote,
+        getDeviceList,
+        setAudioDevice,
+        setMidiInput,
+        openBluetoothPairingDialog
     };
+};
+
+// Set a specific input channel (by index) for the current device
+export const setAudioInputChannel = (channelIndex: number): Promise<void> => {
+    invokeNative("setAudioInputChannel", channelIndex);
+    return Promise.resolve();
+};
+
+export const openBluetoothPairingDialog = () => {
+    console.log("Frontend: openBluetoothPairingDialog called via invokeNative");
+    
+    if (window.__JUCE__ && window.__JUCE__.postMessage) {
+        const payload = {
+            name: "openBluetoothPairingDialog",
+            params: [],
+            resultId: Date.now()
+        };
+        window.__JUCE__.postMessage(JSON.stringify({
+            eventId: "__juce__invoke",
+            payload: payload
+        }));
+    } else {
+        console.warn("[Bridge] Cannot invoke openBluetoothPairingDialog: Not in JUCE environment.");
+    }
 };

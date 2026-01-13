@@ -8,6 +8,10 @@
 
 #include "PluginEditor.h"
 #include "PluginProcessor.h"
+// Required for Bluetooth Pairing Dialog
+#if JUCE_IOS || JUCE_ANDROID
+ #include <juce_audio_utils/juce_audio_utils.h>
+#endif
 #include <juce_audio_plugin_client/Standalone/juce_StandaloneFilterWindow.h> // For StandalonePluginHolder
 #include <optional>
 
@@ -16,6 +20,7 @@ AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor(
     AmenBreakChopperAudioProcessor &p)
     : AudioProcessorEditor(&p), audioProcessor(p),
       webView(juce::WebBrowserComponent::Options()
+          .withNativeIntegrationEnabled()
 #if JUCE_WINDOWS
           .withBackend(juce::WebBrowserComponent::Options::Backend::webview2)
           .withWinWebView2Options(juce::WebBrowserComponent::Options::WinWebView2Options()
@@ -255,6 +260,127 @@ AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor(
                     webView.evaluateJavascript(js);
 
                     completion(juce::var());
+                  })
+              // --- Device Management (Standalone) ---
+              .withNativeFunction(
+                  "getDeviceList",
+                  [this](const juce::Array<juce::var> &,
+                         juce::WebBrowserComponent::NativeFunctionCompletion
+                             completion) {
+                    sendDeviceList();
+                    completion(juce::var());
+                  })
+              .withNativeFunction(
+                  "setAudioDevice",
+                  [this](const juce::Array<juce::var> &args,
+                         juce::WebBrowserComponent::NativeFunctionCompletion
+                             completion) {
+                    if (deviceManager != nullptr && args.size() > 0 && args[0].isString()) {
+                        juce::String deviceName = args[0].toString();
+                        
+                        // Setup Audio
+                        juce::AudioDeviceManager::AudioDeviceSetup setup;
+                        deviceManager->getAudioDeviceSetup(setup);
+                        setup.inputDeviceName = deviceName;
+                        setup.outputDeviceName = deviceName; // Usually input/output are same driver on macOS/CoreAudio
+                        
+                        deviceManager->setAudioDeviceSetup(setup, true);
+                    }
+                    sendDeviceList(); // Always refresh to sync UI
+                    completion(juce::var());
+                  })
+              .withNativeFunction(
+                  "setMidiInput",
+                  [this](const juce::Array<juce::var> &args,
+                         juce::WebBrowserComponent::NativeFunctionCompletion
+                             completion) {
+                    if (args.size() > 1 && args[0].isString()) {
+                        juce::String identifier = args[0].toString();
+                        
+                        // Robust boolean extraction
+                        bool enable = false;
+                        if (args[1].isBool()) enable = (bool)args[1];
+                        else if (args[1].isInt()) enable = (int)args[1] != 0;
+                        else if (args[1].isDouble()) enable = (double)args[1] != 0.0;
+                        else enable = args[1].toString().getIntValue() != 0;
+
+                        // Find canonical identifier
+                        auto available = juce::MidiInput::getAvailableDevices();
+                        bool found = false;
+                        for (auto& dev : available) {
+                            if (dev.identifier == identifier) {
+                                found = true;
+                                
+                                // Use StandalonePluginHolder's deviceManager if available (standalone mode)
+                                if (auto* holder = juce::StandalonePluginHolder::getInstance()) {
+                                    holder->deviceManager.setMidiInputDeviceEnabled(dev.identifier, enable);
+                                    bool actualState = holder->deviceManager.isMidiInputDeviceEnabled(dev.identifier);
+                                    lastMidiDebugLog = "Set " + identifier.substring(0,8) + " -> " + (enable ? "ON" : "OFF") + " (Standalone) Res:" + (actualState ? "ON" : "OFF");
+                                }
+                                // Fallback to deviceManager (plugin mode)
+                                else if (deviceManager != nullptr) {
+                                    deviceManager->setMidiInputDeviceEnabled(dev.identifier, enable);
+                                    bool actualState = deviceManager->isMidiInputDeviceEnabled(dev.identifier);
+                                    lastMidiDebugLog = "Set " + identifier.substring(0,8) + " -> " + (enable ? "ON" : "OFF") + " (Plugin) Res:" + (actualState ? "ON" : "OFF");
+                                }
+                                break;
+                            }
+                        }
+                        if (!found) {
+                            lastMidiDebugLog = "Dev Not Found: " + identifier;
+                        }
+                    } else {
+                        lastMidiDebugLog = "Invalid Args";
+                    }
+
+                    sendDeviceList(); // Always refresh
+                    completion(juce::var());
+                  })
+              .withNativeFunction(
+                  "setAudioInputChannel",
+                  [this](const juce::Array<juce::var> &args,
+                         juce::WebBrowserComponent::NativeFunctionCompletion
+                             completion) {
+                    if (deviceManager != nullptr && args.size() > 0 && args[0].isInt()) {
+                        int channelIndex = (int)args[0];
+                        auto setup = deviceManager->getAudioDeviceSetup();
+                        
+                        juce::BigInteger inputMask;
+                        inputMask.setBit(channelIndex);
+                        
+                        setup.inputChannels = inputMask;
+                        setup.useDefaultInputChannels = false;
+                        
+                        juce::String error = deviceManager->setAudioDeviceSetup(setup, true);
+                        if (error.isNotEmpty()) {
+                             lastMidiDebugLog = "Audio Set Err: " + error;
+                        } else {
+                             lastMidiDebugLog = "Set Audio Ch " + juce::String(channelIndex) + " (OK)";
+                        }
+                    } else {
+                        lastMidiDebugLog = "Audio Args Err";
+                    }
+
+                    sendDeviceList();
+                    completion(juce::var());
+                  })
+              .withNativeFunction(
+                  "openBluetoothPairingDialog",
+                  [this](const juce::Array<juce::var> &args,
+                         juce::WebBrowserComponent::NativeFunctionCompletion
+                             completion) {
+                    ignoreUnused(args);
+                    printf("Native: openBluetoothPairingDialog called.\n");
+                    
+                    #if JUCE_IOS
+                    if (juce::BluetoothMidiDevicePairingDialogue::isAvailable())
+                        juce::BluetoothMidiDevicePairingDialogue::open();
+                    #elif JUCE_ANDROID
+                    if (juce::BluetoothMidiDevicePairingDialogue::isAvailable())
+                        juce::BluetoothMidiDevicePairingDialogue::open();
+                    #endif
+                    
+                    completion(juce::var());
                   }))
 {
     // --- Research Step 1: Programmatic Unmute ---
@@ -380,7 +506,7 @@ void AmenBreakChopperAudioProcessorEditor::timerCallback() {
       // We need to send an array of 512 floats.
       juce::DynamicObject* obj = new juce::DynamicObject();
       juce::Array<juce::var> dataArray;
-      dataArray.ensureStorageAllocated(waveform.size());
+      dataArray.ensureStorageAllocated(static_cast<int>(waveform.size()));
       
       for (float sample : waveform) {
           dataArray.add(sample);
@@ -407,9 +533,9 @@ void AmenBreakChopperAudioProcessorEditor::resized() {
   // we calculate the safe area by intersecting our Screen Bounds with the 
   // Display's userArea (which excludes the notch/home bar).
   auto& displays = juce::Desktop::getInstance().getDisplays();
-  auto display = displays.getMainDisplay(); // validated as existing via StandaloneApp.cpp usage
+  auto display = displays.getPrimaryDisplay(); // validated as existing via StandaloneApp.cpp usage
   
-  auto safeArea = display.userArea;
+  auto safeArea = display->userArea;
   auto screenBounds = getScreenBounds();
 
   if (!screenBounds.isEmpty()) {
@@ -457,4 +583,108 @@ void AmenBreakChopperAudioProcessorEditor::syncAllParametersToFrontend() {
       sendParameterUpdate(p->paramID, val);
     }
   }
+}
+
+void AmenBreakChopperAudioProcessorEditor::sendDeviceList() {
+    if (deviceManager == nullptr) return; // Not in standalone or not linked
+    
+    juce::DynamicObject* root = new juce::DynamicObject();
+    
+    // --- Audio Devices ---
+    juce::DynamicObject* audioObj = new juce::DynamicObject();
+    root->setProperty("audio", audioObj);
+    
+    // Current Device Info
+    auto* currentDevice = deviceManager->getCurrentAudioDevice();
+    if (currentDevice != nullptr) {
+        audioObj->setProperty("currentDevice", currentDevice->getName());
+        audioObj->setProperty("inputChannels", currentDevice->getInputChannelNames());
+    }
+    
+    // Available Device Names (CoreAudio usually)
+    juce::StringArray devNames;
+    juce::String currentTypeName = deviceManager->getCurrentAudioDeviceType();
+    
+    // Find the actual type object to get the device list
+    for (auto* type : deviceManager->getAvailableDeviceTypes()) {
+        if (type->getTypeName() == currentTypeName) {
+            devNames = type->getDeviceNames();
+            break;
+        }
+    }
+    
+    // Also add other types? For now just current type (CoreAudio) is fine for Mac Standalone
+    audioObj->setProperty("availableDevices", devNames);
+    
+    // --- MIDI Devices ---
+    juce::Array<juce::var> midiInputs;
+    auto availableInputs = juce::MidiInput::getAvailableDevices();
+    for (auto& info : availableInputs) {
+        juce::DynamicObject* midiObj = new juce::DynamicObject();
+        midiObj->setProperty("name", info.name);
+        midiObj->setProperty("id", info.identifier);
+        
+        bool isEnabled = deviceManager->isMidiInputDeviceEnabled(info.identifier);
+        midiObj->setProperty("enabled", isEnabled);
+        
+        midiInputs.add(midiObj);
+    }
+    root->setProperty("midiInputs", midiInputs);
+
+    // --- Active Input Channel Names ---
+    juce::Array<juce::var> inputChannelNames;
+    if (deviceManager != nullptr) {
+        auto* device = deviceManager->getCurrentAudioDevice();
+        if (device != nullptr) {
+            auto activeChannels = device->getActiveInputChannels();
+            auto channelNames = device->getInputChannelNames();
+            for (int i = 0; i < activeChannels.getHighestBit() + 1; ++i) {
+               // Show all potential channels for the device, or just active?
+               // The MD suggests showing all so user can pick.
+               // Let's iterate up to channelNames.size() actually, or just offer all input channels supported.
+               // Actually, we want to show *Available* channels to select.
+               // But 'activeInputNames' was showing *currently active*.
+               // Let's change usage: We want to lists 'availableInputChannels' with their index.
+               if (i < channelNames.size()) {
+                   juce::DynamicObject* chan = new juce::DynamicObject();
+                   chan->setProperty("name", channelNames[i]);
+                   chan->setProperty("index", i);
+                   chan->setProperty("active", activeChannels[i]);
+                   inputChannelNames.add(chan);
+               } else {
+                   // Fallback for unnamed channels if any
+                   juce::DynamicObject* chan = new juce::DynamicObject();
+                   chan->setProperty("name", "Ch " + juce::String(i + 1));
+                   chan->setProperty("index", i);
+                   chan->setProperty("active", activeChannels[i]);
+                   inputChannelNames.add(chan);
+               }
+            }
+        }
+    }
+    audioObj->setProperty("inputChannelsList", inputChannelNames);
+
+    // --- Debug Info ---
+    juce::String debugInfo;
+    if (deviceManager == nullptr) debugInfo << "DM: NULL";
+    else {
+        debugInfo << "DM: OK. ";
+        int enabledCount = 0;
+        for (auto& info : availableInputs) {
+            bool en = deviceManager->isMidiInputDeviceEnabled(info.identifier);
+            if (en) enabledCount++;
+            debugInfo << "[" << info.name.substring(0, 5) << ":" << (en ? "ON" : "OFF") << "] ";
+        }
+        debugInfo << "Total: " << availableInputs.size();
+        debugInfo << " | LastLog: " << lastMidiDebugLog;
+    }
+    root->setProperty("debugInfo", debugInfo);
+
+
+    juce::String js = "if (typeof window.juce_emitEvent === 'function') { "
+                      "window.juce_emitEvent('deviceList', " + juce::JSON::toString(juce::var(root)) + "); }";
+                      
+    if (isWebViewLoaded) {
+        webView.evaluateJavascript(js);
+    }
 }

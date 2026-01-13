@@ -184,7 +184,7 @@ AmenBreakChopperAudioProcessor::createParameterLayout() {
 
   // Delay adjustment
   layout.add(std::make_unique<juce::AudioParameterInt>(
-      "delayAdjust", "Delay Adjust", -4096, 4096, 0));
+      "delayAdjust", "Delay Adjust", -1000, 1000, 0));
   layout.add(std::make_unique<juce::AudioParameterInt>(
       "midiCcDelayAdjustFwd", "MIDI CC Delay Adjust Fwd", 0, 127, 21));
   layout.add(std::make_unique<juce::AudioParameterInt>(
@@ -597,9 +597,17 @@ void AmenBreakChopperAudioProcessor::processBlock(
           static_cast<juce::AudioParameterInt *>(
               mValueTreeState.getParameter("delayAdjust"))
               ->get();
-      // Recalc ppqPerSample locally for this reset calculation
-      const double ppqPerSample_reset = bpm / (60.0 * getSampleRate());
-      mNextEighthNotePpq += currentDelayAdjust * ppqPerSample_reset;
+
+      
+      // Conversion from MS to PPQ
+      // 1 Beat = 60000 / BPM ms
+      // 1 PPQ = 1 Beat
+      // ms to PPQ = ms / (60000 / BPM)
+      
+      const double msPerBeat = 60000.0 / bpm;
+      const double adjustInPpq = (double)currentDelayAdjust / msPerBeat;
+
+      mNextEighthNotePpq += adjustInPpq;
       mLastDelayAdjust = currentDelayAdjust;
     }
     mHardResetQueued = false;
@@ -642,7 +650,14 @@ void AmenBreakChopperAudioProcessor::processBlock(
   const int deltaDelayAdjust = currentDelayAdjust - mLastDelayAdjust;
 
   if (deltaDelayAdjust != 0) {
-    const double deltaPpq = deltaDelayAdjust * ppqPerSample;
+    // Convert ms delta to PPQ delta
+    // deltaMs / (60000 / BPM) = deltaPpq
+    const double msPerBeat = 60000.0 / bpm;
+    // Avoid division by zero
+    double safeMsPerBeat = (msPerBeat < 1.0) ? 1.0 : msPerBeat; 
+
+    const double deltaPpq = (double)deltaDelayAdjust / safeMsPerBeat;
+    
     mNextEighthNotePpq += deltaPpq;
     mWaveformDirty = true; // Delay adjust changed, waveforms shifted
   }
