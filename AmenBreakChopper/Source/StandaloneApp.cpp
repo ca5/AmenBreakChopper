@@ -12,8 +12,11 @@
 */
 
 #include <JuceHeader.h>
+#include "PluginEditor.h"
+#include <stdio.h> // For printf
 
 #if JUCE_USE_CUSTOM_PLUGIN_STANDALONE_APP
+// #error "CONFIRMED_CUSTOM_APP_IS_ACTIVE" // PROBE REMOVED
 
 #include <juce_audio_plugin_client/Standalone/juce_StandaloneFilterWindow.h>
 
@@ -49,7 +52,7 @@ public:
         setBackgroundColour(juce::Colours::black);
         setColour(juce::ResizableWindow::backgroundColourId, juce::Colours::black);
         
-        setFullScreen (true);
+        setFullScreen (false);
         // Ensure bounds cover the screen
         if (auto* display = juce::Desktop::getInstance().getDisplays().getPrimaryDisplay())
             setBounds (display->totalArea);
@@ -64,44 +67,21 @@ public:
 
         // 2. Programmatically force Unmute (Step 1 of Research)
         pluginHolder->getMuteInputValue().setValue(false);
-        
+
         // 3. Create and show the Plugin Editor
         if (auto* processor = pluginHolder->processor.get())
         {
-            // Reset logic or state if needed
-            // processor->programmaticReset(); // Example if needed
-
             if (auto* editor = processor->createEditor())
             {
-                // We use a container to hold the editor + specific standalone controls (like Settings)
-                auto* container = new juce::Component();
-                container->addAndMakeVisible(editor);
+                // We use a container to hold the editor
+                // Inject DeviceManager Reference if it's our specific editor type
+                if (auto* myEditor = dynamic_cast<AmenBreakChopperAudioProcessorEditor*>(editor))
+                {
+                    myEditor->setDeviceManager(&pluginHolder->deviceManager);
+                }
                 
-                // Add a permanent "Audio Settings" button overlay or ensure the Editor has one.
-                // For now, we'll put the editor as the main content and rely on the
-                // native menu bar or a keyboard shortcut, OR we add a small button.
-                // Let's add a small overlay button for "Settings" in the container.
-                settingsButton.setButtonText("Audio Settings");
-                settingsButton.addListener(this);
-                container->addAndMakeVisible(settingsButton);
-                
-                // Layout logic for container
-                // We need a simple ResizableLayout or just resized()
-                // Let's use a lambda or simple component subclass for the container would be cleaner,
-                // but for a single file, we can just do setContentOwned with a clever customized component.
-                // Actually, let's just set the Editor as content and rely on a Title Bar button?
-                // JUCE Native title bars don't easily allow custom buttons.
-                
-                // Let's stick to the simplest robust approach:
-                // Editor is the main content. We assume the user can access settings via the Editor's UI
-                // IF the editor serves that function. But `ControlPanel.tsx` is React.
-                // So we NEED a way to open Audio Settings.
-                // We'll revert to holding the editor directly, but maybe add a KeyListener or Menu?
-                // Better: Create a MainComponent that holds Editor + Button.
-                delete container; // scrap previous thought
-                
-                mainComponent.reset(new MainComponent(editor, *this));
-                setContentNonOwned(mainComponent.get(), true);
+                // Set editor as content
+                setContentOwned(editor, true);
             }
         }
 
@@ -120,7 +100,6 @@ public:
         if (auto* props = juce::StandalonePluginHolder::getInstance()->settings.get())
             props->setValue ("windowState", getWindowStateAsString());
             
-        mainComponent = nullptr; // delete content before holder
         pluginHolder = nullptr;  // shut down audio
     }
 
@@ -129,56 +108,10 @@ public:
         juce::JUCEApplication::getInstance()->systemRequestedQuit();
     }
     
-    void buttonClicked (juce::Button* b) override
-    {
-        if (b == &settingsButton)
-        {
-            pluginHolder->showAudioSettingsDialog();
-        }
-    }
-    
-    void showAudioSettings()
-    {
-        pluginHolder->showAudioSettingsDialog();
-    }
+    void buttonClicked (juce::Button* b) override {}
 
 private:
-    // A simple container to hold Editor + Settings Button
-    class MainComponent : public juce::Component
-    {
-    public:
-        MainComponent(juce::AudioProcessorEditor* editorToOwn, CustomStandaloneWindow& w)
-            : editor(editorToOwn), owner(w)
-        {
-            addAndMakeVisible(editor.get());
-            
-            settingsBtn.setButtonText("⚙"); // Gear icon approximation
-            settingsBtn.setTooltip("Audio Device Settings");
-            settingsBtn.onClick = [this] { owner.showAudioSettings(); };
-            addAndMakeVisible(settingsBtn);
-            
-            // Match editor size initially
-            setSize(editor->getWidth(), editor->getHeight());
-        }
-        
-        void resized() override
-        {
-            if (editor)
-                editor->setBounds(getLocalBounds());
-            
-            // Floating Settings Button (Top Right)
-            settingsBtn.setBounds(getWidth() - 30, 5, 25, 25);
-        }
-        
-    private:
-        std::unique_ptr<juce::AudioProcessorEditor> editor;
-        CustomStandaloneWindow& owner;
-        juce::TextButton settingsBtn;
-    };
-
     std::unique_ptr<juce::StandalonePluginHolder> pluginHolder;
-    std::unique_ptr<MainComponent> mainComponent;
-    juce::TextButton settingsButton; // (Unused in new design, kept in class for legacy)
 };
 
 

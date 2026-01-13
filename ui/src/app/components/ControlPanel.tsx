@@ -1,6 +1,28 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Settings } from 'lucide-react';
-import { useJuceBridge } from '../../hooks/useJuceBridge';
+import { useJuceBridge, setAudioInputChannel } from '../../hooks/useJuceBridge';
+import { Settings, Play, Pause, ChevronDown, Check, Info } from 'lucide-react';
+import type { ThemeColor } from '../App';
+
+interface DeviceList {
+    audio: {
+        currentDevice: string;
+        availableDevices: string[];
+        inputChannels: string[];
+        // New property for granular channel selection
+        inputChannelsList?: Array<{
+            name: string;
+            index: number;
+            active: boolean;
+        }>;
+        activeInputNames?: string[]; // Kept for backward compat if needed, but we use inputChannelsList now
+    };
+    midiInputs: Array<{
+        name: string;
+        id: string;
+        enabled: boolean;
+    }>;
+    debugInfo?: string;
+}
 
 interface ControlPanelProps {
   colorTheme: 'green' | 'blue' | 'purple' | 'red' | 'orange' | 'cyan' | 'pink';
@@ -8,7 +30,36 @@ interface ControlPanelProps {
 }
 
 export function ControlPanel({ colorTheme, onThemeChange }: ControlPanelProps) {
-  const { parameters, sendParameter } = useJuceBridge();
+  const {
+    parameters,
+    sendParameter,
+    performHardReset,
+    isStandalone,
+    addEventListener,
+    getDeviceList,
+    setAudioDevice,
+    setMidiInput,
+    openBluetoothPairingDialog
+  } = useJuceBridge();
+
+  const [deviceList, setDeviceList] = useState<DeviceList | null>(null);
+
+  useEffect(() => {
+     if (isStandalone && getDeviceList) {
+         // Subscribe
+         const removeListener = addEventListener('deviceList', (data: any) => {
+             // console.log("Device List Received", data);
+             setDeviceList(data);
+         });
+
+         // Fetch initial
+         getDeviceList();
+
+         return () => {
+            removeListener();
+         };
+     }
+  }, [isStandalone, addEventListener, getDeviceList]);
   const [currentPage, setCurrentPage] = useState(0);
 
   // Helpers for parameter mapping
@@ -29,9 +80,10 @@ export function ControlPanel({ colorTheme, onThemeChange }: ControlPanelProps) {
   const sftResetCC = getIntParam('midiCcSoftReset', 97);
 
   // New Delay CC params
-  const dlyAdjFwdCC = getIntParam('midiCcDelayAdjustFwd', 21);
-  const dlyAdjBwdCC = getIntParam('midiCcDelayAdjustBwd', 19);
-  const dlyAdjStep = getIntParam('delayAdjustCcStep', 64);
+  const dlyAdjFwdCC = parameters['midiCcDelayAdjustFwd'] ? Math.round(parameters['midiCcDelayAdjustFwd']) : 21;
+  const dlyAdjBwdCC = parameters['midiCcDelayAdjustBwd'] ? Math.round(parameters['midiCcDelayAdjustBwd']) : 19;
+  const dlyAdjStep = parameters['delayAdjustCcStep'] ? Math.round(parameters['delayAdjustCcStep']) : 64;
+  const delayAdjustVal = parameters['delayAdjust'] ? Math.round(parameters['delayAdjust']) : 0;
 
   // Modes: 0=Gate-On, 1=Gate-Off, 2=Toggle (Assumed)
   const seqResetModeVal = getIntParam('midiCcSeqResetMode', 0);
@@ -231,6 +283,31 @@ export function ControlPanel({ colorTheme, onThemeChange }: ControlPanelProps) {
             />
           </div>
 
+          {/* Delay Adjust */}
+          <div className="flex items-center justify-between">
+            <label className={`text-sm ${theme.textSecondary}`}>Delay Adjust (ms)</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                value={delayAdjustVal}
+                onChange={(e) => setParam('delayAdjust', Number(e.target.value))}
+                className={`w-20 px-3 py-1.5 border rounded ${theme.inputBg} ${theme.textSecondary} text-center focus:outline-none`}
+              />
+              <button 
+                onClick={() => setParam('delayAdjust', Math.max(-1000, delayAdjustVal - 10))} 
+                className={`px-2 py-1.5 ${theme.buttonBg} ${theme.text} rounded transition-colors`}
+              >
+                -
+              </button>
+              <button 
+                onClick={() => setParam('delayAdjust', Math.min(1000, delayAdjustVal + 10))} 
+                className={`px-2 py-1.5 ${theme.buttonBg} ${theme.text} rounded transition-colors`}
+              >
+                +
+              </button>
+            </div>
+          </div>
+
           {/* Send Port */}
           <div className="flex items-center justify-between">
             <label className={`text-sm ${theme.textSecondary}`}>Send Port</label>
@@ -320,6 +397,86 @@ export function ControlPanel({ colorTheme, onThemeChange }: ControlPanelProps) {
             {/* Audio & Sync (Standalone) */}
             <div className="mb-6">
                 <h4 className={`text-xs uppercase font-bold ${theme.textTertiary} mb-3`}>Audio & Sync</h4>
+                
+                {/* Standalone Device Selection */}
+                {isStandalone && deviceList && (
+                    <div className="mb-4 space-y-3 p-3 bg-black/20 rounded-lg">
+                        {/* Audio Device */}
+                        <div>
+                            <label className={`text-xs ${theme.textSecondary} mb-1 block`}>Audio Device</label>
+                            <select 
+                                value={deviceList.audio.currentDevice}
+                                onChange={(e) => setAudioDevice && setAudioDevice(e.target.value)}
+                                className={`w-full px-2 py-1.5 rounded ${theme.inputBg} ${theme.text} text-xs border ${theme.border} focus:outline-none`}
+                            >
+                                {deviceList.audio.availableDevices.map(dev => (
+                                    <option key={dev} value={dev}>{dev}</option>
+                                ))}
+                            </select>
+                        </div>
+                        
+                        {/* Audio Input Channels Info */}
+                         {/* Active Inputs Display with Selection */}
+                         <div className="flex flex-wrap gap-1 mt-1">
+                             {(deviceList.audio.inputChannelsList || []).map((chan, i) => (
+                                 <button
+                                     key={i}
+                                     onClick={() => setAudioInputChannel && setAudioInputChannel(chan.index)}
+                                     className={`px-1.5 py-0.5 text-[10px] rounded border ${
+                                         chan.active 
+                                             ? 'bg-green-900/50 text-green-300 border-green-700 hover:bg-green-800/50' 
+                                             : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
+                                     }`}
+                                 >
+                                     {chan.name}
+                                 </button>
+                             ))}
+                             {/* Fallback for old activeInputNames if new list is missing */}
+                             {(!deviceList.audio.inputChannelsList && deviceList.audio.activeInputNames) && 
+                                 deviceList.audio.activeInputNames.map((name, i) => (
+                                     <span key={i} className="px-1.5 py-0.5 text-[10px] bg-green-900/50 text-green-300 rounded border border-green-700">
+                                         {name}
+                                     </span>
+                                 ))
+                             }
+                         </div>
+                        
+                         {/* MIDI Inputs */}
+                        <div>
+                            <label className={`text-xs ${theme.textSecondary} mb-1 block`}>MIDI Inputs</label>
+                            <div className="max-h-24 overflow-y-auto space-y-1">
+                                {deviceList.midiInputs.map(midi => (
+                                    <label key={midi.id} className="flex items-center gap-2 cursor-pointer hover:bg-white/5 p-1 rounded">
+                                        <input 
+                                            type="checkbox"
+                                            checked={midi.enabled}
+                                            onChange={(e) => setMidiInput && setMidiInput(midi.id, e.target.checked)}
+                                            className="rounded border-slate-600 bg-slate-800"
+                                        />
+                                        <span className={`text-xs ${midi.enabled ? theme.text : 'text-slate-500'}`}>{midi.name}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Bluetooth MIDI Connect Button */}
+                        <div className="mt-4 pt-4 border-t border-white/10">
+                            <button
+                                onClick={() => openBluetoothPairingDialog()}
+                                className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                            >
+                                <span>🔌</span>
+                                Connect Bluetooth MIDI
+                            </button>
+                            <p className="text-xs text-white/50 mt-2 text-center">
+                                Tap here to pair new Bluetooth MIDI devices
+                            </p>
+                        </div>
+
+
+
+                    </div>
+                )}
                 
                 {/* BPM Sync Mode */}
                 <div className="flex items-center justify-between mb-3">

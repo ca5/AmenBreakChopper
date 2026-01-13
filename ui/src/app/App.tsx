@@ -252,7 +252,7 @@ export default function App() {
               <div className="flex items-center gap-4 w-full justify-end">
                 <div className="flex items-center gap-2 flex-1 max-w-xl bg-slate-900/40 p-1.5 rounded-lg border border-slate-700/30">
                   <button
-                    onClick={() => sendParameter('delayAdjust', Math.max(-4096, delayAdjustValue - 1))}
+                    onClick={() => sendParameter('delayAdjust', Math.max(-1000, delayAdjustValue - 10))}
                     className={`px-2 py-1.5 rounded hover:bg-white/10 ${theme.textSecondary} transition-colors font-mono text-xs`}
                   >
                     &lt;
@@ -261,8 +261,8 @@ export default function App() {
                   <div className="flex-1 px-2">
                     <input
                       type="range"
-                      min="-4096"
-                      max="4096"
+                      min="-1000"
+                      max="1000"
                       value={delayAdjustValue}
                       onChange={(e) => sendParameter('delayAdjust', Number(e.target.value))}
                       className={`w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer ${theme.accentColor === 'text-green-400' ? 'accent-green-500' : theme.accentColor === 'text-blue-400' ? 'accent-blue-500' : theme.accentColor === 'text-purple-400' ? 'accent-purple-500' : theme.accentColor === 'text-red-400' ? 'accent-red-500' : theme.accentColor === 'text-orange-400' ? 'accent-orange-500' : theme.accentColor === 'text-cyan-400' ? 'accent-cyan-500' : 'accent-pink-500'}`}
@@ -270,7 +270,7 @@ export default function App() {
                   </div>
 
                   <button
-                    onClick={() => sendParameter('delayAdjust', Math.min(4096, delayAdjustValue + 1))}
+                    onClick={() => sendParameter('delayAdjust', Math.min(1000, delayAdjustValue + 10))}
                     className={`px-2 py-1.5 rounded hover:bg-white/10 ${theme.textSecondary} transition-colors font-mono text-xs`}
                   >
                     &gt;
@@ -281,10 +281,10 @@ export default function App() {
                   <input
                     type="number"
                     value={delayAdjustValue}
-                    onChange={(e) => sendParameter('delayAdjust', Math.min(4096, Math.max(-4096, Number(e.target.value))))}
+                    onChange={(e) => sendParameter('delayAdjust', Math.min(1000, Math.max(-1000, Number(e.target.value))))}
                     className="w-16 bg-transparent text-right font-mono text-xs focus:outline-none text-slate-200"
                   />
-                  <span className={`text-[10px] ${theme.textSecondary} ml-0.5 mr-2`}>smpl</span>
+                  <span className={`text-[10px] ${theme.textSecondary} ml-0.5 mr-2`}>ms</span>
                 </div>
               </div>
             </div>

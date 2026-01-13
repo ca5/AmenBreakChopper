@@ -40,6 +40,16 @@ private:
 
   // Initial state setup
   void syncAllParametersToFrontend();
+  void sendDeviceList();
+
+  // Standalone Device Management
+  juce::AudioDeviceManager* deviceManager = nullptr;
+
+public:
+  void setDeviceManager(juce::AudioDeviceManager* dm) { deviceManager = dm; }
+
+  // Debug helper
+  juce::String lastMidiDebugLog;
 
   bool isWebViewLoaded{false};
   int framesWaited{0};

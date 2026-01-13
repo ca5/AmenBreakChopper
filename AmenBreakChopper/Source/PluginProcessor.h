@@ -33,7 +33,11 @@ struct MidiClockTracker {
           clockIntervals.erase(clockIntervals.begin());
         }
 
-        if (clockIntervals.size() >= 4) {
+        // Issue #26: Update BPM only on 8th note ticks (every 12 clocks)
+        // This reduces jitter in waveform/position display
+        // Issue #26: Update BPM only on 8th note ticks (every 12 clocks)
+        // This reduces jitter in waveform/position display
+        if (clockIntervals.size() >= 4 && (clockCount % 12 == 0)) {
           double sum = 0.0;
           for (double i : clockIntervals)
             sum += i;
