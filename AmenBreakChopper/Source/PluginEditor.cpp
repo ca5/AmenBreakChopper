@@ -506,7 +506,7 @@ void AmenBreakChopperAudioProcessorEditor::timerCallback() {
       // We need to send an array of 512 floats.
       juce::DynamicObject* obj = new juce::DynamicObject();
       juce::Array<juce::var> dataArray;
-      dataArray.ensureStorageAllocated(waveform.size());
+      dataArray.ensureStorageAllocated(static_cast<int>(waveform.size()));
       
       for (float sample : waveform) {
           dataArray.add(sample);
@@ -533,9 +533,9 @@ void AmenBreakChopperAudioProcessorEditor::resized() {
   // we calculate the safe area by intersecting our Screen Bounds with the 
   // Display's userArea (which excludes the notch/home bar).
   auto& displays = juce::Desktop::getInstance().getDisplays();
-  auto display = displays.getMainDisplay(); // validated as existing via StandaloneApp.cpp usage
+  auto display = displays.getPrimaryDisplay(); // validated as existing via StandaloneApp.cpp usage
   
-  auto safeArea = display.userArea;
+  auto safeArea = display->userArea;
   auto screenBounds = getScreenBounds();
 
   if (!screenBounds.isEmpty()) {

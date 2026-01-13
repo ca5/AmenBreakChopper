@@ -597,8 +597,7 @@ void AmenBreakChopperAudioProcessor::processBlock(
           static_cast<juce::AudioParameterInt *>(
               mValueTreeState.getParameter("delayAdjust"))
               ->get();
-      // Recalc ppqPerSample locally for this reset calculation
-      const double ppqPerSample_reset = bpm / (60.0 * getSampleRate());
+
       
       // Conversion from MS to PPQ
       // 1 Beat = 60000 / BPM ms
