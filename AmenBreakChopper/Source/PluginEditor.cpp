@@ -510,7 +510,7 @@ void AmenBreakChopperAudioProcessorEditor::timerCallback() {
 
   if (audioProcessor.mWaveformDirty.exchange(false)) {
       std::vector<float> waveform = audioProcessor.getWaveformData();
-      int currentSeqPos = audioProcessor.getSequencePosition(); // Use public getter
+      int currentSeqPos = audioProcessor.getUiSequencePosition(); // Use synched UI position
       
       // Manually construct JSON string for speed/simplicity or use JUCE JSON
       // We need to send an array of 512 floats.

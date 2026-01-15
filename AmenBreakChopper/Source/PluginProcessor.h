@@ -114,7 +114,8 @@ public:
   
   // Waveform Data
   std::vector<float> getWaveformData();
-  int getSequencePosition() { return mSequencePosition.load(); }
+  int getSequencePosition() const { return mSequencePosition.load(); }
+  int getUiSequencePosition() const { return mUiSequencePosition.load(); }
   std::atomic<bool> mWaveformDirty{true};
 
   void loadBuiltInSample(const juce::String& resourceName);
@@ -147,6 +148,9 @@ private:
   // --- Sequencer State ---
   double mNextEighthNotePpq{0.0};
   std::atomic<int> mSequencePosition{0};
+  std::atomic<int> mUiSequencePosition{0}; // For UI sync
+  std::atomic<int> mUiWritePosition{0}; // For UI sync of write head
+  std::atomic<int> mWaveformOffset{0}; // Waveform rotation offset (set at reset, stays fixed)
   int mNoteSequencePosition{0};
   int mLastReceivedNoteValue{0};
   std::atomic<int> mUiTriggeredNote{-1}; // Atomic for thread safety

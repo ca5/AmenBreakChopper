@@ -56,75 +56,87 @@ std::vector<float> AmenBreakChopperAudioProcessor::getWaveformData() {
 
   if (bufferSize == 0) return std::vector<float>(16 * 32, 0.0f);
 
-  int currentWritePos = mWritePosition; 
-  int currentSeqPos = mSequencePosition;
+  if (bufferSize == 0) return std::vector<float>(16 * 32, 0.0f);
+
+  int currentWritePos = mUiWritePosition.load(); // Use synced UI write position
+  int currentSeqPos = mUiSequencePosition.load();
+  int waveformOffset = mWaveformOffset.load(); // Fixed offset set at reset
   double samplesToNextBeat = mSamplesToNextBeat.load();
   
   const auto* channelData = mDelayBuffer.getReadPointer(0); // Use Left channel for visualization
 
-  // Loop through 0..15 corresponding to the 16 steps of the sequence.
-  for (int stepIndex = 0; stepIndex < 16; ++stepIndex) {
-      // If this is the currently recording step, it contains mostly old data (from 16 beats ago).
-      // The user requested to hide this.
-      // mSequencePosition is the NEXT step index. So (current - 1) is Actively Playing.
-      int activeStep = (currentSeqPos - 1 + 16) % 16;
-      if (stepIndex == activeStep) {
-          for (int i = 0; i < 32; ++i) waveformData.push_back(0.0f);
-          continue;
+      // Check if we should visualize the Static Sample or the Live Delay Buffer
+      bool isInputEnabled = *mValueTreeState.getRawParameterValue("inputEnabled") > 0.5f;
+      
+      if (!isInputEnabled && mIsSampleLoaded) {
+          // --- Static Sample Visualization ---
+          int idx = mActiveBufferIndex.load();
+          if (mSampleBuffers[idx].getNumSamples() > 0) {
+              const float* sampleData = mSampleBuffers[idx].getReadPointer(0);
+              int sampleLength = mSampleBuffers[idx].getNumSamples();
+              
+              // Divide entire sample into 16 slices
+              double samplesPerSlice = (double)sampleLength / 16.0;
+              int increment = static_cast<int>(samplesPerSlice / 32.0);
+              if (increment < 1) increment = 1;
+              
+              // Use fixed waveform offset (set at reset, doesn't change with sequencer)
+              for (int visualPos = 0; visualPos < 16; ++visualPos) {
+                  // Calculate which sample slice to show at this visual position
+                  int sampleSlice = (visualPos + waveformOffset) % 16;
+                  int startSample = static_cast<int>(sampleSlice * samplesPerSlice);
+                  
+                  for (int k = 0; k < 32; ++k) {
+                       int pos = startSample + k * increment;
+                       if (pos < sampleLength) {
+                           waveformData.push_back(sampleData[pos]);
+                       } else {
+                           waveformData.push_back(0.0f);
+                       }
+                  }
+              }
+              return waveformData;
+          }
       }
-      
-      // Logic:
-      // "Current Step" (the one defined by currentSeqPos - 1) ends at "currentWritePos + samplesToNextBeat".
-      // Current Step is (currentSeqPos - 1 + 16) % 16.
-      
-      int currentStepIdx = (currentSeqPos - 1 + 16) % 16;
-      
-      // We want to find the start/end of 'stepIndex' relative to 'currentStepIdx'.
-      // offsetSteps = stepIndex - currentStepIdx;
-      // If offsetSteps > 0, it's in the future (relative to the currently playing step start).
-      // We want the most recent *completed* or *active* recording of this step.
-      
-      int diff = stepIndex - currentStepIdx;
-      // Wrap diff to be within [-15, 0] roughly? 
-      // Actually, define distance in steps BACKWARDS from current step end.
-      
-      // Time of StepIndex End = Time of CurrentStep End + (diff * duration).
-      // Time of CurrentStep End = currentWritePos + samplesToNextBeat.
-      
-      double endSamplePosFromNow = samplesToNextBeat + (diff * eighthNoteSamples);
-      
-      // If endSamplePosFromNow > 0, it means it ends in the future.
-      // We want the version that is fully recorded or currently recording?
-      // For the current step (diff=0), end is in future, start is in past. We show it.
-      // For next step (diff=1), end is far in future. We want the previous loop's version.
-      // So subtract Loop Duration (16 * duration) until endSamplePosFromNow <= samplesToNextBeat ? 
-      // Actually, strictly speaking, we want the most recent data.
-      // If diff=1 (Next Step), it hasn't happened yet. So we show (Next Step - 16).
-      // If diff=0 (Current Step), it is happening now. We show it.
-      
-      while (endSamplePosFromNow > samplesToNextBeat) {
-          endSamplePosFromNow -= (16.0 * eighthNoteSamples);
-      }
-      
-      double startSamplePosFromNow = endSamplePosFromNow - eighthNoteSamples;
-      
-      // Convert to buffer indices relative to currentWritePos
-      // Index = currentWritePos + offset
-      int startIdx = currentWritePos + static_cast<int>(startSamplePosFromNow);
-      int endIdx = currentWritePos + static_cast<int>(endSamplePosFromNow);
-      
-      int len = endIdx - startIdx;
-      if (len <= 0) len = 1; 
-      
-      for (int i = 0; i < 32; ++i) {
-          int samplePos = startIdx + (i * len) / 32;
+
+      // --- Live Delay Buffer Visualization (Fallback) ---
+      for (int stepIndex = 0; stepIndex < 16; ++stepIndex) {
+          // currentSeqPos points to the NEXT step to be played
+          // The currently playing (recording) step is (currentSeqPos - 1)
+          // Calculate 'i': How far is stepIndex from the currently playing step?
           
-          while (samplePos < 0) samplePos += bufferSize;
-          while (samplePos >= bufferSize) samplePos -= bufferSize;
+          int currentlyPlayingStep = (currentSeqPos - 1 + 16) % 16;
+          int i = (stepIndex - currentlyPlayingStep + 16) % 16;
           
-          waveformData.push_back(channelData[samplePos]);
+          if (i == 0) {
+              // Current Step (Active/Recording) - no waveform yet (still recording)
+              for (int k = 0; k < 32; ++k) {
+                  waveformData.push_back(0.0f);
+              }
+          } else {
+              // Past Step - show completed waveform
+              double timeElapsedInCurrent = eighthNoteSamples - samplesToNextBeat;
+              double startSampleRelToNow = -(timeElapsedInCurrent + (16.0 - i) * eighthNoteSamples);
+              
+              int readPos = currentWritePos + static_cast<int>(startSampleRelToNow);
+              
+              int increment = static_cast<int>(eighthNoteSamples / 32.0);
+              if (increment == 0) increment = 1;
+              int delayBufferLength = mDelayBuffer.getNumSamples();
+              
+              for (int k = 0; k < 32; ++k) {
+                  int pos = readPos + k * increment;
+                  while (pos < 0) pos += delayBufferLength;
+                  while (pos >= delayBufferLength) pos -= delayBufferLength;
+                  
+                  if (pos < delayBufferLength) {
+                     waveformData.push_back(channelData[pos]);
+                  } else {
+                     waveformData.push_back(0.0f);
+                  }
+              }
+          }
       }
-  }
 
   return waveformData;
 }
@@ -328,6 +340,8 @@ void AmenBreakChopperAudioProcessor::prepareToPlay(double sampleRate,
       // Initialize sequencer state
       mNextEighthNotePpq = 0.0;
       mSequencePosition = 0;
+      mUiSequencePosition.store(0);
+      mUiWritePosition.store(0);
       mNoteSequencePosition = 0;
       mLastReceivedNoteValue = 0;
       mSequenceResetQueued = false;
@@ -729,7 +743,11 @@ void AmenBreakChopperAudioProcessor::processBlock(
     }
 
     if (mSoftResetQueued) {
+      // Capture current position before reset for waveform rotation
+      mWaveformOffset.store(mSequencePosition.load());
+      
       mSequencePosition = 0;
+      mUiSequencePosition.store(0); // Immediately update UI position
       mNoteSequencePosition = 0;
       mSoftResetQueued = false;
     }
@@ -764,8 +782,15 @@ void AmenBreakChopperAudioProcessor::processBlock(
             // 3. Reset State
             mIsSampleLoaded = true;
             mSampleReadPos = 0.0;
-            mSequencePosition = 0;
-            mNoteSequencePosition = 0;
+            
+            // Keep existing waveform offset (don't reset to 0)
+            // This preserves any rotation from previous reset
+            // mWaveformOffset.store(0);  // REMOVED - keep current offset
+            
+            // Don't reset mSequencePosition - let it continue
+            // mSequencePosition = 0;  // REMOVED
+            // mUiSequencePosition.store(0);  // REMOVED
+            // mNoteSequencePosition = 0;  // REMOVED
             mPendingSampleSwitch = false; 
             
             // 4. Force Redraw
@@ -856,16 +881,50 @@ void AmenBreakChopperAudioProcessor::processBlock(
         // Use Active Buffer
         int idx = mActiveBufferIndex.load();
         if (mSampleBuffers[idx].getNumSamples() > 0) {
-            float l = mSampleBuffers[idx].getSample(0, (int)mSampleReadPos);
-            float r = (mSampleBuffers[idx].getNumChannels() > 1) ? mSampleBuffers[idx].getSample(1, (int)mSampleReadPos) : l;
+            // Phase-Locked Playback with Offset (Chopping)
+            // Calculate read position based on current PPQ to ensure perfect sync with sequencer
+            // preventing drift between audio loop and sequencer grid.
+            
+            double curPpq = ppqAtStartOfBlock + sample * ppqPerSample;
+            // Force loop to match sequencer grid (16 steps = 8.0 PPQ)
+            // This time-stretches the sample to fit the grid, ensuring sync
+            double loopLengthPpq = 16.0 * 0.5; // 16 steps * 0.5 PPQ/step = 8.0 PPQ
+            
+            // Apply Delay Offset directly to Phase (Chopping)
+            // currentDelayTime is in Steps (Eighth Notes). 1 Step = 0.5 PPQ.
+            // We want to read from "Past", so Subtract offset.
+            double offsetPpq = currentDelayTime * 0.5;
+            double targetPpq = curPpq - offsetPpq;
+            
+            // Wrap PPQ within loop
+            double wrappedPpq = fmod(targetPpq, loopLengthPpq);
+            // fmod returns negative if input is negative. Handle wrapping correctly.
+            if (wrappedPpq < 0) wrappedPpq += loopLengthPpq;
+            
+            double progress = wrappedPpq / loopLengthPpq;
+            int sampleLen = mSampleBuffers[idx].getNumSamples();
+            
+            // Map progress 0..1 to sample indices 0..Length
+            // Use simple Linear Interpolation or just integer index
+            double idealPos = progress * sampleLen;
+            mSampleReadPos = idealPos; // Update member for reference (though value is derived per sample)
+
+            // Interpolated read
+            int posInt = (int)idealPos;
+            int posNext = (posInt + 1) % sampleLen;
+            float frac = (float)(idealPos - posInt);
+            
+            float l = mSampleBuffers[idx].getSample(0, posInt) * (1.0f - frac) + 
+                      mSampleBuffers[idx].getSample(0, posNext) * frac;
+                      
+            float r = (mSampleBuffers[idx].getNumChannels() > 1) ? 
+                      (mSampleBuffers[idx].getSample(1, posInt) * (1.0f - frac) + 
+                       mSampleBuffers[idx].getSample(1, posNext) * frac) : l;
             
             mDelayBuffer.getWritePointer(0)[(mWritePosition + sample) % delayBufferLength] = l;
             mDelayBuffer.getWritePointer(1)[(mWritePosition + sample) % delayBufferLength] = r;
 
-            // Increment based on ratio
-            double ratio = (mSampleRate > 0.0) ? (mSampleBufferRates[idx] / mSampleRate) : 1.0;
-            mSampleReadPos += ratio;
-            if (mSampleReadPos >= mSampleBuffers[idx].getNumSamples()) mSampleReadPos = 0.0;
+            // No need to manually increment mSampleReadPos or check bounds as it's derived from PPQ
         } else {
              mDelayBuffer.getWritePointer(0)[(mWritePosition + sample) % delayBufferLength] = 0.0f;
              mDelayBuffer.getWritePointer(1)[(mWritePosition + sample) % delayBufferLength] = 0.0f;
@@ -879,25 +938,16 @@ void AmenBreakChopperAudioProcessor::processBlock(
 
     // If DelayTime is 0, bypass the effect (output is same as input)
     // FIX: If sample is loaded, we ALWAYS want to write to output (to overwrite input buffer), even if delay time is 0.
-    if ((currentDelayTime != 0 || mIsSampleLoaded) && isPlaying) {
+    // MODIFIED: If sample is loaded, we apply the "Delay" as an offset to the Sample Read Phase,
+    // so we act as if the Delay Effect is 0 (Direct Output of chopped sample).
+    int effectiveDelayTime = currentDelayTime;
+    if (mIsSampleLoaded && !inputEnabled) effectiveDelayTime = 0;
+    
+    if ((effectiveDelayTime != 0 || mIsSampleLoaded || inputEnabled) && isPlaying) {
       double eighthNoteTime = (60.0 / bpm) / 2.0;
-      // Recalculate or reuse sampleRate if scope issue
-      // We need sampleRate here. 'sampleRate' is defined at line 634 (in previous chunk view)
-      // BUT if I messed up the scope with the duplicate ELSE, the compiler might be confused.
-      // However, looking at the code, sampleRate is defined in the main block.
-      // Wait, line 634: const double sampleRate = getSampleRate();
-      // If that is inside the main processBlock, it should be visible here.
-      // Unless the duplicated } else { closed the scope early! (Line 582)
-      // Yes, } else { ... } ... 
-      // The duplicated } closes the previous if (bpmMode == 2).
-      // Then else { ... } opens a new block?
-      // No, syntax error "Expected expression" at 582:5.
-      
-      // So fixing the duplicate else should fix the scope of sampleRate IF sampleRate is defined after it.
-      // sampleRate is defined at 634. Usage is at 809.
-      // So ensuring sampleRate is defined correctly is key.
+
       int delayTimeInSamples =
-          static_cast<int>(eighthNoteTime * currentDelayTime * sampleRate);
+          static_cast<int>(eighthNoteTime * effectiveDelayTime * sampleRate);
 
       for (int channel = 0; channel < totalNumOutputChannels; ++channel) {
            if (channel >= 2) break; // Only mapped to first 2 outputs
@@ -918,7 +968,8 @@ void AmenBreakChopperAudioProcessor::processBlock(
 
   mWritePosition = (mWritePosition + bufferLength) % delayBufferLength;
   
-  if (positionInfo.getIsPlaying()) {
+  // Use local 'isPlaying' which accounts for BPM Sync Mode (Manual/MIDI/Host)
+  if (isPlaying) {
       // Update samples to next beat for visualization AFTER sequencer update
       // We use the PPQ at the end of the block since mWritePosition is now there.
       double ppqDist = mNextEighthNotePpq - ppqAtEndOfBlock;
@@ -929,9 +980,16 @@ void AmenBreakChopperAudioProcessor::processBlock(
       } else {
           mSamplesToNextBeat.store(0.0);
       }
+      
+      // Update UI Sequence Position to match the audio state at end of block
+      mUiSequencePosition.store(mSequencePosition.load());
+      
   } else {
       mSamplesToNextBeat.store(0.0);
   }
+  
+  // Always update UI write position as buffer is circular and write head moves
+  mUiWritePosition.store(mWritePosition);
 }
 
 //==============================================================================
