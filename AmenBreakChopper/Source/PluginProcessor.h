@@ -134,10 +134,15 @@ private:
   std::atomic<double> mSamplesToNextBeat{0.0};
   
   // --- Built-in Sample State ---
-  std::atomic<bool> mIsSampleLoaded{false};
-  juce::AudioBuffer<float> mLoadedSample;
+  // Double-buffering for sample playback
+  juce::AudioBuffer<float> mSampleBuffers[2];
+  std::atomic<int> mActiveBufferIndex { 0 };
+  std::atomic<bool> mPendingSampleSwitch { false };
+  std::atomic<float> mPendingBpm { 120.0f };
+  
+  std::atomic<bool> mIsSampleLoaded{false}; 
+  double mSampleBufferRates[2] { 44100.0, 44100.0 };
   double mSampleReadPos{0.0};
-  double mLoadedSampleRate{44100.0};
 
   // --- Sequencer State ---
   double mNextEighthNotePpq{0.0};

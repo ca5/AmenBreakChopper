@@ -339,13 +339,38 @@ void AmenBreakChopperAudioProcessor::prepareToPlay(double sampleRate,
 
       mIsSampleLoaded = false;
       mSampleReadPos = 0.0;
-      mLoadedSampleRate = 44100.0;
-      mLoadedSample.setSize(0, 0); // Clear logic
+      mSampleBufferRates[0] = 44100.0;
+      mSampleBufferRates[1] = 44100.0;
+      mSampleBuffers[0].setSize(0, 0); // Clear logic
+      mSampleBuffers[1].setSize(0, 0); 
       
       // Default State based on Wrapper Type
       juce::PluginHostType hostType;
       if (hostType.getPluginLoadedAs() == juce::AudioProcessor::wrapperType_Standalone) {
           loadBuiltInSample("amen140.wav");
+          // Force immediate switch for startup
+          if (mPendingSampleSwitch.load()) {
+             mActiveBufferIndex.store(1 - mActiveBufferIndex.load());
+             mIsSampleLoaded = true;
+             mPendingSampleSwitch = false; 
+             
+             // Apply Pending Params immediately
+             float pendingBpm = mPendingBpm.load();
+             mCurrentBpm.store(pendingBpm);
+             
+             if (auto* p = mValueTreeState.getParameter("internalBpm")) {
+                 if (auto* fp = dynamic_cast<juce::AudioParameterFloat*>(p)) {
+                     fp->setValueNotifyingHost(fp->convertTo0to1(pendingBpm));
+                 }
+             }
+             if (auto* p = mValueTreeState.getParameter("bpmSyncMode")) {
+                 p->setValueNotifyingHost(1.0f); // Manual
+             }
+             if (auto* p = mValueTreeState.getParameter("inputEnabled"))
+                 p->setValueNotifyingHost(0.0f); // Disable Input
+                 
+             mWaveformDirty = true;
+          }
       }
       
       mIsInitialized = true;
@@ -709,6 +734,45 @@ void AmenBreakChopperAudioProcessor::processBlock(
       mSoftResetQueued = false;
     }
 
+    // --- Quantized Sample Switch Logic ---
+    // If a sample load is pending, switch on the beat (every 2 steps / quarter note)
+    if (mPendingSampleSwitch.load()) {
+        // Switch on beat (even steps: 0, 2, 4...)
+        if (mSequencePosition % 2 == 0) {
+            // 1. Swap Buffer
+            int pendingIndex = 1 - mActiveBufferIndex.load();
+            mActiveBufferIndex.store(pendingIndex);
+            
+            // 2. Update BPM
+            float newBpm = mPendingBpm.load();
+            mCurrentBpm.store(newBpm); 
+            
+            // Update Parameters (careful in audio thread, but needed for sync)
+            if (auto* p = mValueTreeState.getParameter("internalBpm")) {
+               if (auto* fp = dynamic_cast<juce::AudioParameterFloat*>(p)) {
+                   fp->setValueNotifyingHost(fp->convertTo0to1(newBpm));
+               }
+            }
+             // Set Manual Mode
+             if (auto* p = mValueTreeState.getParameter("bpmSyncMode")) {
+                 p->setValueNotifyingHost(1.0f); // Manual
+             }
+             // Disable Input
+            if (auto* p = mValueTreeState.getParameter("inputEnabled"))
+                 p->setValueNotifyingHost(0.0f);
+
+            // 3. Reset State
+            mIsSampleLoaded = true;
+            mSampleReadPos = 0.0;
+            mSequencePosition = 0;
+            mNoteSequencePosition = 0;
+            mPendingSampleSwitch = false; 
+            
+            // 4. Force Redraw
+            mWaveformDirty = true; 
+        }
+    }
+
     if (mNewNoteReceived) {
       const int diff = mSequencePosition - mLastReceivedNoteValue;
       const int newDelayTime = (diff % 16 + 16) % 16;
@@ -789,17 +853,19 @@ void AmenBreakChopperAudioProcessor::processBlock(
       }
     } else if (mIsSampleLoaded) {
         // Playback Built-in Sample
-        if (mLoadedSample.getNumSamples() > 0) {
-            float l = mLoadedSample.getSample(0, (int)mSampleReadPos);
-            float r = (mLoadedSample.getNumChannels() > 1) ? mLoadedSample.getSample(1, (int)mSampleReadPos) : l;
+        // Use Active Buffer
+        int idx = mActiveBufferIndex.load();
+        if (mSampleBuffers[idx].getNumSamples() > 0) {
+            float l = mSampleBuffers[idx].getSample(0, (int)mSampleReadPos);
+            float r = (mSampleBuffers[idx].getNumChannels() > 1) ? mSampleBuffers[idx].getSample(1, (int)mSampleReadPos) : l;
             
             mDelayBuffer.getWritePointer(0)[(mWritePosition + sample) % delayBufferLength] = l;
             mDelayBuffer.getWritePointer(1)[(mWritePosition + sample) % delayBufferLength] = r;
 
             // Increment based on ratio
-            double ratio = (mSampleRate > 0.0) ? (mLoadedSampleRate / mSampleRate) : 1.0;
+            double ratio = (mSampleRate > 0.0) ? (mSampleBufferRates[idx] / mSampleRate) : 1.0;
             mSampleReadPos += ratio;
-            if (mSampleReadPos >= mLoadedSample.getNumSamples()) mSampleReadPos = 0.0;
+            if (mSampleReadPos >= mSampleBuffers[idx].getNumSamples()) mSampleReadPos = 0.0;
         } else {
              mDelayBuffer.getWritePointer(0)[(mWritePosition + sample) % delayBufferLength] = 0.0f;
              mDelayBuffer.getWritePointer(1)[(mWritePosition + sample) % delayBufferLength] = 0.0f;
@@ -943,17 +1009,22 @@ void AmenBreakChopperAudioProcessor::setStateInformation(const void *data,
 //==============================================================================
 
 //==============================================================================
+//==============================================================================
 void AmenBreakChopperAudioProcessor::loadBuiltInSample(const juce::String& resourceName) {
     int size = 0;
     const char* data = BinaryData::getNamedResource(resourceName.toRawUTF8(), size);
     
-    // Fallback: try replacing dots with underscores (common Projucer behavior)
+    // Fallback
     if (data == nullptr) {
         juce::String mangled = resourceName.replaceCharacter('.', '_');
         data = BinaryData::getNamedResource(mangled.toRawUTF8(), size);
     }
     
     if (data != nullptr && size > 0) {
+        // Determine Target Buffer (Inactive one)
+        int currentIndex = mActiveBufferIndex.load();
+        int targetIndex = 1 - currentIndex;
+        
         auto inputStream = std::make_unique<juce::MemoryInputStream>(data, size, false);
         juce::AudioFormatManager formatManager;
         formatManager.registerBasicFormats();
@@ -961,43 +1032,27 @@ void AmenBreakChopperAudioProcessor::loadBuiltInSample(const juce::String& resou
         std::unique_ptr<juce::AudioFormatReader> reader(formatManager.createReaderFor(std::move(inputStream)));
         
         if (reader != nullptr) {
-            mLoadedSample.setSize(reader->numChannels, (int)reader->lengthInSamples);
-            reader->read(&mLoadedSample, 0, (int)reader->lengthInSamples, 0, true, true);
+            // Load into Target Buffer
+            mSampleBuffers[targetIndex].setSize(reader->numChannels, (int)reader->lengthInSamples);
+            reader->read(&mSampleBuffers[targetIndex], 0, (int)reader->lengthInSamples, 0, true, true);
             
-            mSampleReadPos = 0.0;
-            mLoadedSampleRate = reader->sampleRate;
-            mIsSampleLoaded = true;
+            mSampleBufferRates[targetIndex] = reader->sampleRate; 
             
-            // Disable Input
-            if (auto* p = mValueTreeState.getParameter("inputEnabled"))
-                 p->setValueNotifyingHost(0.0f);
-                 
-             // Set Manual Mode (Index 2)
-             if (auto* p = mValueTreeState.getParameter("bpmSyncMode")) {
-                 if (auto* cp = dynamic_cast<juce::AudioParameterChoice*>(p)) {
-                     p->setValueNotifyingHost(1.0f);
-                 }
-             }
-            
-            // Parse BPM from filename (e.g. "amen140.wav" or "amen140")
-            // simple check: find integer in string
+            // Parse BPM
+            float newBpm = 120.0f; // default
             juce::String cleanName = resourceName;
-            
-            // Extract numbers. "amen140" -> "140".
             juce::String digits = cleanName.retainCharacters("0123456789.");
             if (digits.isNotEmpty()) {
-                float bpm = digits.getFloatValue();
-                if (bpm > 30.0f && bpm < 300.0f) {
-                    if (auto* p = mValueTreeState.getParameter("internalBpm")) {
-                       if (auto* fp = dynamic_cast<juce::AudioParameterFloat*>(p)) {
-                           fp->setValueNotifyingHost(fp->convertTo0to1(bpm));
-                       }
-                    }
+                float parsed = digits.getFloatValue();
+                if (parsed > 30.0f && parsed < 300.0f) {
+                    newBpm = parsed;
                 }
             }
             
-            // Force redraw of waveform
-            mWaveformDirty = true;
+            // Queue the Switch
+            mPendingBpm.store(newBpm);
+            mPendingSampleSwitch.store(true);
+            
         }
     } else {
         juce::Logger::writeToLog("AmenBreakChopper: Failed to load built-in sample " + resourceName);
