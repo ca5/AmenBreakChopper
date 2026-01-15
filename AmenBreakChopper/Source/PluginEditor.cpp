@@ -365,6 +365,16 @@ AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor(
                     completion(juce::var());
                   })
               .withNativeFunction(
+                  "loadSample",
+                  [this](const juce::Array<juce::var> &args,
+                         juce::WebBrowserComponent::NativeFunctionCompletion
+                             completion) {
+                    if (args.size() > 0 && args[0].isString()) {
+                        audioProcessor.loadBuiltInSample(args[0].toString());
+                    }
+                    completion(juce::var());
+                  })
+              .withNativeFunction(
                   "openBluetoothPairingDialog",
                   [this](const juce::Array<juce::var> &args,
                          juce::WebBrowserComponent::NativeFunctionCompletion

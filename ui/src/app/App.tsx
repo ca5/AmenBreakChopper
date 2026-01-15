@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { WaveformDisplay } from './components/WaveformDisplay';
 import { ControlPanel } from './components/ControlPanel';
+import { SampleLoader } from './components/SampleLoader';
 import { RotateCcw, Settings, ArrowLeft } from 'lucide-react';
 import { useJuceBridge } from '../hooks/useJuceBridge';
 
@@ -290,7 +291,10 @@ export default function App() {
             </div>
           </>
         ) : (
-          <ControlPanel colorTheme={colorTheme} onThemeChange={handleThemeChange} />
+          <div className="space-y-6">
+            <SampleLoader colorTheme={colorTheme} />
+            <ControlPanel colorTheme={colorTheme} onThemeChange={handleThemeChange} />
+          </div>
         )}
       </main>
 

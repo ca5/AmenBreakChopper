@@ -117,6 +117,8 @@ public:
   int getSequencePosition() { return mSequencePosition.load(); }
   std::atomic<bool> mWaveformDirty{true};
 
+  void loadBuiltInSample(const juce::String& resourceName);
+
 private:
   //==============================================================================
   void parameterChanged(const juce::String &parameterID,
@@ -130,6 +132,12 @@ private:
   double mSampleRate{0.0};
   std::atomic<double> mCurrentBpm{120.0};
   std::atomic<double> mSamplesToNextBeat{0.0};
+  
+  // --- Built-in Sample State ---
+  std::atomic<bool> mIsSampleLoaded{false};
+  juce::AudioBuffer<float> mLoadedSample;
+  double mSampleReadPos{0.0};
+  double mLoadedSampleRate{44100.0};
 
   // --- Sequencer State ---
   double mNextEighthNotePpq{0.0};
