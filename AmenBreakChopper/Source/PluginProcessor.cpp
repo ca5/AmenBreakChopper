@@ -323,22 +323,33 @@ void AmenBreakChopperAudioProcessor::prepareToPlay(double sampleRate,
   mDelayBuffer.setSize(2, delayBufferSize); // Fixed 2 channels (Stereo)
   mDelayBuffer.clear();
 
-  // Initialize sequencer state
-  mNextEighthNotePpq = 0.0;
-  mSequencePosition = 0;
-  mNoteSequencePosition = 0;
-  mLastReceivedNoteValue = 0;
-  mSequenceResetQueued = false;
-  mHardResetQueued = false;
-  mNewNoteReceived = false;
-  mLastDelayAdjustFwdCcValue = 0;
-  mLastDelayAdjustBwdCcValue = 0;
-  mLastDelayAdjust = 0;
+  // Initialize checks
+  if (!mIsInitialized) {
+      // Initialize sequencer state
+      mNextEighthNotePpq = 0.0;
+      mSequencePosition = 0;
+      mNoteSequencePosition = 0;
+      mLastReceivedNoteValue = 0;
+      mSequenceResetQueued = false;
+      mHardResetQueued = false;
+      mNewNoteReceived = false;
+      mLastDelayAdjustFwdCcValue = 0;
+      mLastDelayAdjustBwdCcValue = 0;
+      mLastDelayAdjust = 0;
 
-  mIsSampleLoaded = false;
-  mSampleReadPos = 0.0;
-  mLoadedSampleRate = 44100.0;
-  mLoadedSample.setSize(0, 0); // Clear logic
+      mIsSampleLoaded = false;
+      mSampleReadPos = 0.0;
+      mLoadedSampleRate = 44100.0;
+      mLoadedSample.setSize(0, 0); // Clear logic
+      
+      // Default State based on Wrapper Type
+      juce::PluginHostType hostType;
+      if (hostType.getPluginLoadedAs() == juce::AudioProcessor::wrapperType_Standalone) {
+          loadBuiltInSample("amen140.wav");
+      }
+      
+      mIsInitialized = true;
+  }
 }
 
 void AmenBreakChopperAudioProcessor::releaseResources() {
@@ -984,6 +995,9 @@ void AmenBreakChopperAudioProcessor::loadBuiltInSample(const juce::String& resou
                     }
                 }
             }
+            
+            // Force redraw of waveform
+            mWaveformDirty = true;
         }
     } else {
         juce::Logger::writeToLog("AmenBreakChopper: Failed to load built-in sample " + resourceName);

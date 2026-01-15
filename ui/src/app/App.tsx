@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { WaveformDisplay } from './components/WaveformDisplay';
 import { ControlPanel } from './components/ControlPanel';
-import { SampleLoader } from './components/SampleLoader';
-import { RotateCcw, Settings, ArrowLeft } from 'lucide-react';
+import { RotateCcw, Settings, ArrowLeft, ChevronDown } from 'lucide-react';
 import { useJuceBridge } from '../hooks/useJuceBridge';
 
 export default function App() {
@@ -20,7 +19,7 @@ export default function App() {
   const [triggeredPlayhead, setTriggeredPlayhead] = useState<number | null>(null);
 
   // Use the bridge
-  const { parameters, sendParameter, addEventListener, performHardReset, isStandalone } = useJuceBridge();
+  const { parameters, sendParameter, addEventListener, performHardReset, isStandalone, loadSample } = useJuceBridge();
 
   // Scroll locking logic for Standalone
   useEffect(() => {
@@ -188,6 +187,12 @@ export default function App() {
   const delayAdjustValue = parameters['delayAdjust'] ? Math.round(parameters['delayAdjust']) : 0;
   const inputEnabled = (parameters['inputEnabled'] ?? 1) > 0.5;
 
+  // Track selected sample name for UI display
+  const [currentSample, setCurrentSample] = useState<string>('amen140.wav');
+
+  // Logic to determine dropdown value
+  const audioSourceValue = inputEnabled ? 'ext' : currentSample;
+
   return (
     <div className={`min-h-screen bg-gradient-to-br ${theme.bgGradient} flex flex-col`}>
       {/* Header */}
@@ -195,16 +200,41 @@ export default function App() {
         <div className="flex items-center justify-between">
           <div className="flex-1">
             <h1 className="text-white text-sm font-medium flex items-center gap-3">
-              <button
-                onClick={() => sendParameter('inputEnabled', inputEnabled ? 0 : 1)}
-                className={`ml-3 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider border transition-all ${
-                  inputEnabled
-                    ? 'bg-green-500/20 text-green-400 border-green-500/50 shadow-[0_0_12px_rgba(34,197,94,0.3)]'
-                    : 'bg-slate-800/50 text-slate-500 border-slate-700/50 hover:bg-slate-800'
-                }`}
-              >
-                {inputEnabled ? 'EXT INPUT: ON' : 'MUTED'}
-              </button>
+            <div className="flex items-center gap-2">
+                <div className="relative">
+                     <select
+                        className={`w-40 px-3 py-1 border rounded-full text-xs font-bold tracking-wider ${
+                           inputEnabled 
+                           ? 'bg-green-500/20 text-green-400 border-green-500/50' 
+                           : 'bg-slate-800/80 text-orange-400 border-orange-500/50'
+                        } appearance-none focus:outline-none transition-all cursor-pointer`}
+                        value={audioSourceValue} 
+                        onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === 'ext') {
+                                sendParameter('inputEnabled', 1);
+                            } else {
+                                // Update local state for UI consistency
+                                setCurrentSample(val);
+
+                                // Load Sample
+                                if (loadSample) {
+                                  loadSample(val);
+                                }
+                            }
+                        }}
+                     >
+                        <option value="ext">EXT INPUT</option>
+                        <option value="amen140.wav">Amen Break 140</option>
+                        <option value="amen160.wav">Amen Break 160</option>
+                        <option value="amen180.wav">Amen Break 180</option>
+                        <option value="amen200.wav">Amen Break 200</option>
+                     </select>
+                     <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                        <ChevronDown size={14} className={inputEnabled ? 'text-green-400' : 'text-orange-400'} />
+                     </div>
+                </div>
+            </div>
             </h1>
           </div>
 
@@ -292,7 +322,6 @@ export default function App() {
           </>
         ) : (
           <div className="space-y-6">
-            <SampleLoader colorTheme={colorTheme} />
             <ControlPanel colorTheme={colorTheme} onThemeChange={handleThemeChange} />
           </div>
         )}

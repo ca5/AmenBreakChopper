@@ -1,20 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useJuceBridge, setAudioInputChannel } from '../../hooks/useJuceBridge';
-import { Settings, Play, Pause, ChevronDown, Check, Info } from 'lucide-react';
-import type { ThemeColor } from '../App';
 
 interface DeviceList {
     audio: {
         currentDevice: string;
         availableDevices: string[];
         inputChannels: string[];
-        // New property for granular channel selection
         inputChannelsList?: Array<{
             name: string;
             index: number;
             active: boolean;
         }>;
-        activeInputNames?: string[]; // Kept for backward compat if needed, but we use inputChannelsList now
+        activeInputNames?: string[];
     };
     midiInputs: Array<{
         name: string;
@@ -24,9 +21,11 @@ interface DeviceList {
     debugInfo?: string;
 }
 
+export type ThemeColor = 'green' | 'blue' | 'purple' | 'red' | 'orange' | 'cyan' | 'pink';
+
 interface ControlPanelProps {
-  colorTheme: 'green' | 'blue' | 'purple' | 'red' | 'orange' | 'cyan' | 'pink';
-  onThemeChange: (theme: 'green' | 'blue' | 'purple' | 'red' | 'orange' | 'cyan' | 'pink') => void;
+  colorTheme: ThemeColor;
+  onThemeChange: (theme: ThemeColor) => void;
 }
 
 export function ControlPanel({ colorTheme, onThemeChange }: ControlPanelProps) {
@@ -119,7 +118,9 @@ export function ControlPanel({ colorTheme, onThemeChange }: ControlPanelProps) {
     pink: { panel: 'bg-pink-950/30', border: 'border-pink-900/50', text: 'text-pink-300', textSecondary: 'text-pink-300/80', textTertiary: 'text-pink-400/60', buttonBg: 'bg-pink-900/30 hover:bg-pink-800/50', inputBg: 'bg-slate-800/50 border-pink-900/50 focus:border-pink-600', accentBg: 'bg-pink-600', accentSlider: 'accent-pink-600' },
   };
 
-  const theme = themeColors[colorTheme];
+  const theme = themeColors[colorTheme] || themeColors.green;
+
+  if (!theme) return null; // Should not happen with fallback, but safe guard
 
   const modeOptions = ['Gate-On', 'Gate-Off', 'Toggle'];
 
@@ -128,6 +129,8 @@ export function ControlPanel({ colorTheme, onThemeChange }: ControlPanelProps) {
       title: 'MIDI Configuration',
       content: (
         <div className="space-y-4">
+
+
           {/* MIDI In Channel */}
           <div className="flex items-center justify-between">
             <label className={`text-sm ${theme.textSecondary}`}>MIDI In Channel</label>

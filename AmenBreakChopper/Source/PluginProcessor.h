@@ -172,6 +172,9 @@ private:
   void oscMessageReceived(const juce::OSCMessage &message) override;
 
   bool shouldTriggerReset(int mode, int previousValue, int currentValue);
+  
+  // Initialization flag
+  bool mIsInitialized { false };
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AmenBreakChopperAudioProcessor)
 };
