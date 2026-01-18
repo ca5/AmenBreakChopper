@@ -918,7 +918,7 @@ void AmenBreakChopperAudioProcessor::processBlock(
 
   mWritePosition = (mWritePosition + bufferLength) % delayBufferLength;
   
-  if (positionInfo.getIsPlaying()) {
+  if (isPlaying) {
       // Update samples to next beat for visualization AFTER sequencer update
       // We use the PPQ at the end of the block since mWritePosition is now there.
       double ppqDist = mNextEighthNotePpq - ppqAtEndOfBlock;
