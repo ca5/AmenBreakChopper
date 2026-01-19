@@ -1,20 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useJuceBridge, setAudioInputChannel } from '../../hooks/useJuceBridge';
-import { Settings, Play, Pause, ChevronDown, Check, Info } from 'lucide-react';
-import type { ThemeColor } from '../App';
 
 interface DeviceList {
     audio: {
         currentDevice: string;
         availableDevices: string[];
         inputChannels: string[];
-        // New property for granular channel selection
         inputChannelsList?: Array<{
             name: string;
             index: number;
             active: boolean;
         }>;
-        activeInputNames?: string[]; // Kept for backward compat if needed, but we use inputChannelsList now
+        activeInputNames?: string[];
     };
     midiInputs: Array<{
         name: string;
@@ -24,9 +21,11 @@ interface DeviceList {
     debugInfo?: string;
 }
 
+export type ThemeColor = 'green' | 'blue' | 'purple' | 'red' | 'orange' | 'cyan' | 'pink';
+
 interface ControlPanelProps {
-  colorTheme: 'green' | 'blue' | 'purple' | 'red' | 'orange' | 'cyan' | 'pink';
-  onThemeChange: (theme: 'green' | 'blue' | 'purple' | 'red' | 'orange' | 'cyan' | 'pink') => void;
+  colorTheme: ThemeColor;
+  onThemeChange: (theme: ThemeColor) => void;
 }
 
 export function ControlPanel({ colorTheme, onThemeChange }: ControlPanelProps) {
@@ -79,6 +78,14 @@ export function ControlPanel({ colorTheme, onThemeChange }: ControlPanelProps) {
   const hrdResetCC = getIntParam('midiCcHardReset', 106);
   const sftResetCC = getIntParam('midiCcSoftReset', 97);
 
+  const internalBpm = getParam('internalBpm', 120.0);
+  // Manual BPM helpers
+  const setInternalBpm = (val: number) => {
+      // Clamp 40-300
+      const clamped = Math.min(300, Math.max(40, val));
+      setParam('internalBpm', clamped);
+  };
+
   // New Delay CC params
   const dlyAdjFwdCC = parameters['midiCcDelayAdjustFwd'] ? Math.round(parameters['midiCcDelayAdjustFwd']) : 21;
   const dlyAdjBwdCC = parameters['midiCcDelayAdjustBwd'] ? Math.round(parameters['midiCcDelayAdjustBwd']) : 19;
@@ -111,7 +118,9 @@ export function ControlPanel({ colorTheme, onThemeChange }: ControlPanelProps) {
     pink: { panel: 'bg-pink-950/30', border: 'border-pink-900/50', text: 'text-pink-300', textSecondary: 'text-pink-300/80', textTertiary: 'text-pink-400/60', buttonBg: 'bg-pink-900/30 hover:bg-pink-800/50', inputBg: 'bg-slate-800/50 border-pink-900/50 focus:border-pink-600', accentBg: 'bg-pink-600', accentSlider: 'accent-pink-600' },
   };
 
-  const theme = themeColors[colorTheme];
+  const theme = themeColors[colorTheme] || themeColors.green;
+
+  if (!theme) return null; // Should not happen with fallback, but safe guard
 
   const modeOptions = ['Gate-On', 'Gate-Off', 'Toggle'];
 
@@ -120,6 +129,8 @@ export function ControlPanel({ colorTheme, onThemeChange }: ControlPanelProps) {
       title: 'MIDI Configuration',
       content: (
         <div className="space-y-4">
+
+
           {/* MIDI In Channel */}
           <div className="flex items-center justify-between">
             <label className={`text-sm ${theme.textSecondary}`}>MIDI In Channel</label>
@@ -500,8 +511,39 @@ export function ControlPanel({ colorTheme, onThemeChange }: ControlPanelProps) {
                     >
                         MIDI CLOCK
                     </button>
+                    <button
+                        onClick={() => setParam('bpmSyncMode', 2)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${bpmMode >= 1.5
+                        ? `${theme.accentBg} text-white`
+                        : `bg-slate-700/50 ${theme.text}`
+                        }`}
+                    >
+                        MANUAL
+                    </button>
                     </div>
                 </div>
+
+                {/* Manual BPM Controls */}
+                {bpmMode >= 1.5 && (
+                    <div className="mb-4 p-3 bg-black/20 rounded-lg">
+                         <div className="flex items-center justify-between">
+                            <label className={`text-xs ${theme.textSecondary}`}>Manual BPM</label>
+                            <div className="flex items-center gap-2">
+                                <span className={`text-lg font-bold ${theme.text} w-16 text-center`}>{internalBpm.toFixed(1)}</span>
+                                <div className="flex flex-col gap-1">
+                                    <div className="flex gap-1">
+                                        <button onClick={() => setInternalBpm(internalBpm + 1)} className={`px-2 py-1 ${theme.buttonBg} ${theme.text} rounded text-xs`}>+1</button>
+                                        <button onClick={() => setInternalBpm(internalBpm + 0.1)} className={`px-2 py-1 ${theme.buttonBg} ${theme.text} rounded text-xs`}>+0.1</button>
+                                    </div>
+                                    <div className="flex gap-1">
+                                        <button onClick={() => setInternalBpm(internalBpm - 1)} className={`px-2 py-1 ${theme.buttonBg} ${theme.text} rounded text-xs`}>-1</button>
+                                        <button onClick={() => setInternalBpm(internalBpm - 0.1)} className={`px-2 py-1 ${theme.buttonBg} ${theme.text} rounded text-xs`}>-0.1</button>
+                                    </div>
+                                </div>
+                            </div>
+                         </div>
+                    </div>
+                )}
 
                 {/* Input Channels (Restored) */}
                 <div className="flex items-center justify-between">

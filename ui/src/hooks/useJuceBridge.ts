@@ -17,6 +17,7 @@ declare global {
         getDeviceList?: () => void;
         setAudioDevice?: (name: string) => void;
         setMidiInput?: (id: string, enabled: boolean) => void;
+        loadSample?: (name: string) => void;
         __JUCE__?: {
             postMessage: (data: string) => void;
         };
@@ -237,8 +238,21 @@ export const useJuceBridge = () => {
                 eventId: "__juce__invoke",
                 payload: payload
             }));
+        }
+    }, []);
+
+    const loadSample = useCallback((name: string) => {
+        console.log("Frontend: loadSample called", name);
+        if (window.loadSample) {
+            window.loadSample(name);
+        } else if (window.__JUCE__ && window.__JUCE__.postMessage) {
+            // Fallback
+             window.__JUCE__.postMessage(JSON.stringify({
+                eventId: "__juce__invoke",
+                payload: { name: "loadSample", params: [name], resultId: Date.now() }
+             }));
         } else {
-            console.warn("[Bridge] Cannot invoke openBluetoothPairingDialog: Not in JUCE environment.");
+            console.warn("[Bridge] loadSample not found on window");
         }
     }, []);
 
@@ -255,7 +269,8 @@ export const useJuceBridge = () => {
         getDeviceList,
         setAudioDevice,
         setMidiInput,
-        openBluetoothPairingDialog
+        openBluetoothPairingDialog,
+        loadSample
     };
 };
 

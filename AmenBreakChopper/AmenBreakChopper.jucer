@@ -25,6 +25,12 @@
       </GROUP>
       <FILE id="LyXJBJ" name="index.html" compile="0" resource="1" file="../ui/dist/index.html"/>
     </GROUP>
+    <GROUP id="SamplesGroup" name="Samples">
+      <FILE id="Amen140" name="amen140.wav" compile="0" resource="1" file="Samples/amen140.wav"/>
+      <FILE id="Amen160" name="amen160.wav" compile="0" resource="1" file="Samples/amen160.wav"/>
+      <FILE id="Amen180" name="amen180.wav" compile="0" resource="1" file="Samples/amen180.wav"/>
+      <FILE id="Amen200" name="amen200.wav" compile="0" resource="1" file="Samples/amen200.wav"/>
+    </GROUP>
   </MAINGROUP>
   <MODULES>
     <MODULE id="juce_animation" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>

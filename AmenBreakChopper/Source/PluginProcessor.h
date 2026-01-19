@@ -117,6 +117,8 @@ public:
   int getSequencePosition() { return mSequencePosition.load(); }
   std::atomic<bool> mWaveformDirty{true};
 
+  void loadBuiltInSample(const juce::String& resourceName);
+
 private:
   //==============================================================================
   void parameterChanged(const juce::String &parameterID,
@@ -130,6 +132,17 @@ private:
   double mSampleRate{0.0};
   std::atomic<double> mCurrentBpm{120.0};
   std::atomic<double> mSamplesToNextBeat{0.0};
+  
+  // --- Built-in Sample State ---
+  // Double-buffering for sample playback
+  juce::AudioBuffer<float> mSampleBuffers[2];
+  std::atomic<int> mActiveBufferIndex { 0 };
+  std::atomic<bool> mPendingSampleSwitch { false };
+  std::atomic<float> mPendingBpm { 120.0f };
+  
+  std::atomic<bool> mIsSampleLoaded{false}; 
+  double mSampleBufferRates[2] { 44100.0, 44100.0 };
+  double mSampleReadPos{0.0};
 
   // --- Sequencer State ---
   double mNextEighthNotePpq{0.0};
@@ -164,6 +177,9 @@ private:
   void oscMessageReceived(const juce::OSCMessage &message) override;
 
   bool shouldTriggerReset(int mode, int previousValue, int currentValue);
+  
+  // Initialization flag
+  bool mIsInitialized { false };
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AmenBreakChopperAudioProcessor)
 };
