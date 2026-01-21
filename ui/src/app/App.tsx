@@ -194,7 +194,7 @@ export default function App() {
   const audioSourceValue = inputEnabled ? 'ext' : currentSample;
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br ${theme.bgGradient} flex flex-col`}>
+    <div className={`h-screen bg-gradient-to-br ${theme.bgGradient} flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]`}>
       {/* Header */}
       <header className={`px-4 py-2 border-b ${theme.borderColor} backdrop-blur-sm bg-slate-900/50`}>
         <div className="flex items-center justify-between">

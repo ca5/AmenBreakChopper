@@ -40,11 +40,14 @@ public:
     CustomStandaloneWindow (const juce::String& name,
                             juce::Colour backgroundColour,
                             juce::PropertySet* settingsToUse)
+#if JUCE_IOS
+        : DocumentWindow (name, backgroundColour, 0)
+#else
         : DocumentWindow (name, backgroundColour, DocumentWindow::allButtons)
+#endif
     {
 #if JUCE_IOS
-        // Disable native title bar to avoid white system bars.
-        // We will handle Safe Area manually in the Editor.
+        // Disable native title bar
         setUsingNativeTitleBar (false);
         setTitleBarHeight (60); 
         
@@ -52,7 +55,7 @@ public:
         setBackgroundColour(juce::Colours::black);
         setColour(juce::ResizableWindow::backgroundColourId, juce::Colours::black);
         
-        setFullScreen (false);
+        setFullScreen (true); // Force Fullscreen
         // Ensure bounds cover the screen
         if (auto* display = juce::Desktop::getInstance().getDisplays().getPrimaryDisplay())
             setBounds (display->totalArea);
@@ -81,15 +84,23 @@ public:
                 }
                 
                 // Set editor as content
+#if JUCE_IOS
+                // On iOS, we want the Editor to Resize to fit the Fullscreen Window
+                setContentOwned(editor, false);
+#else
+                // On Desktop, resize window to fit the Editor's fixed size
                 setContentOwned(editor, true);
+#endif
             }
         }
 
         setResizable (false, false);
         
         // Restore window state
+#if !JUCE_IOS
         if (settingsToUse != nullptr)
             restoreWindowStateFromString (settingsToUse->getValue ("windowState"));
+#endif
         
         setVisible (true);
     }
