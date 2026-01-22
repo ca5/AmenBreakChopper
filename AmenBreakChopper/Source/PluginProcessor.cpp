@@ -21,6 +21,10 @@ AmenBreakChopperAudioProcessor::AmenBreakChopperAudioProcessor()
   mValueTreeState.addParameterListener("oscSendPort", this);
   mValueTreeState.addParameterListener("oscReceivePort", this);
 
+  // Safely initialize buffer to prevent division-by-zero if processBlock is called before prepareToPlay
+  mDelayBuffer.setSize(2, 2048);
+  mDelayBuffer.clear();
+
   // --- Defaults for Standalone ---
   if (juce::JUCEApplicationBase::isStandaloneApp()) {
       // Default Input to OFF for Standalone to accept "silence" policy
@@ -314,11 +318,14 @@ void AmenBreakChopperAudioProcessor::prepareToPlay(double sampleRate,
 
   mMidiClockTracker.reset();
   mSampleRate = sampleRate;
+  if (mSampleRate <= 0.0) mSampleRate = 44100.0; // Fallback safety
 
   // We enforce a Stereo internal buffer for the delay/looping logic.
   // Input routing will map selected inputs to this stereo pair.
-  const int delayBufferSize =
-      static_cast<int>(16.0 * sampleRate); // 16 seconds max delay
+  int delayBufferSize =
+      static_cast<int>(16.0 * mSampleRate); // 16 seconds max delay
+
+  if (delayBufferSize <= 0) delayBufferSize = 2048; // Safety minimum
 
   mDelayBuffer.setSize(2, delayBufferSize); // Fixed 2 channels (Stereo)
   mDelayBuffer.clear();
@@ -421,6 +428,14 @@ bool AmenBreakChopperAudioProcessor::shouldTriggerReset(int mode,
 void AmenBreakChopperAudioProcessor::processBlock(
     juce::AudioBuffer<float> &buffer, juce::MidiBuffer &midiMessages) {
   juce::ScopedNoDenormals noDenormals;
+
+  // Guard against uninitialized state which can cause infinite loops or crashes
+  if (mSampleRate <= 0.0) {
+      buffer.clear();
+      midiMessages.clear();
+      return;
+  }
+
   auto totalNumInputChannels = getTotalNumInputChannels();
   auto totalNumOutputChannels = getTotalNumOutputChannels();
 
@@ -666,7 +681,7 @@ void AmenBreakChopperAudioProcessor::processBlock(
   }
 
   // --- Get musical time information (Effective) ---
-  const double sampleRate = getSampleRate();
+  const double sampleRate = mSampleRate; // Use our sanitized rate
   const double ppqPerSample = bpm / (60.0 * sampleRate);
 
   // --- Handle transport jumps or looping ---
@@ -836,6 +851,10 @@ void AmenBreakChopperAudioProcessor::processBlock(
 
   // --- Audio Processing Logic (Sample-by-sample) ---
   const int delayBufferLength = mDelayBuffer.getNumSamples();
+
+  // Guard against zero-sized buffer (e.g. uninitialized or 0 sample rate)
+  if (delayBufferLength <= 0) return;
+
   auto *delayTimeParam = mValueTreeState.getRawParameterValue("delayTime");
   const int currentDelayTime = static_cast<int>(delayTimeParam->load());
 
