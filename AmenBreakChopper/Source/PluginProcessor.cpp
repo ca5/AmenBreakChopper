@@ -385,37 +385,36 @@ void AmenBreakChopperAudioProcessor::prepareToPlay(double sampleRate,
           isStandalone = true;
       }
 
-      if (isStandalone) {
-          loadBuiltInSample("amen140.wav");
-          DBG("[ABC] prepareToPlay: loadBuiltInSample called (Standalone mode)");
-          // Force immediate switch for startup
-          if (mPendingSampleSwitch.load()) {
-             DBG("[ABC] prepareToPlay: Pending sample switch detected, applying now");
-             mActiveBufferIndex.store(1 - mActiveBufferIndex.load());
-             mIsSampleLoaded = true;
-             mPendingSampleSwitch = false; 
-             
-             // Apply Pending Params immediately
-             float pendingBpm = mPendingBpm.load();
-             mCurrentBpm.store(pendingBpm);
-             
-             if (auto* p = mValueTreeState.getParameter("internalBpm")) {
-                 if (auto* fp = dynamic_cast<juce::AudioParameterFloat*>(p)) {
-                     fp->setValueNotifyingHost(fp->convertTo0to1(pendingBpm));
-                 }
+      // Load Amen140 for both Standalone and Plugin modes
+      // This ensures smooth operation and sample availability
+      loadBuiltInSample("amen140.wav");
+      DBG("[ABC] prepareToPlay: loadBuiltInSample called (" << (isStandalone ? "Standalone" : "Plugin") << " mode)");
+      
+      // Force immediate switch for startup
+      if (mPendingSampleSwitch.load()) {
+         DBG("[ABC] prepareToPlay: Pending sample switch detected, applying now");
+         mActiveBufferIndex.store(1 - mActiveBufferIndex.load());
+         mIsSampleLoaded = true;
+         mPendingSampleSwitch = false; 
+         
+         // Apply Pending Params immediately
+         float pendingBpm = mPendingBpm.load();
+         mCurrentBpm.store(pendingBpm);
+         
+         if (auto* p = mValueTreeState.getParameter("internalBpm")) {
+             if (auto* fp = dynamic_cast<juce::AudioParameterFloat*>(p)) {
+                 fp->setValueNotifyingHost(fp->convertTo0to1(pendingBpm));
              }
-             if (auto* p = mValueTreeState.getParameter("bpmSyncMode")) {
-                 // Use raw set for safety during init
-                 if (auto* raw = mValueTreeState.getRawParameterValue("bpmSyncMode"))
-                     raw->store(1.0f);
-                 // p->setValueNotifyingHost(1.0f); 
-             }
-                 
-             mWaveformDirty = true;
-          }
-       } else {
-           DBG("[ABC] prepareToPlay: Plugin mode detected, NOT loading built-in sample");
-       }
+         }
+         if (auto* p = mValueTreeState.getParameter("bpmSyncMode")) {
+             // Use raw set for safety during init
+             if (auto* raw = mValueTreeState.getRawParameterValue("bpmSyncMode"))
+                 raw->store(isStandalone ? 1.0f : 0.0f); // Standalone: Manual, Plugin: Host
+             // p->setValueNotifyingHost(1.0f); 
+         }
+             
+         mWaveformDirty = true;
+      }
 
       
       mIsInitialized = true;
@@ -687,12 +686,12 @@ void AmenBreakChopperAudioProcessor::processBlock(
       isPlaying = positionInfo.getIsPlaying();
       
       // Force playback in Standalone mode (no host to provide transport)
-      bool isStandaloneEnv = false;
-#if JUCE_IOS
-      isStandaloneEnv = true;
-#else
-      isStandaloneEnv = juce::JUCEApplicationBase::isStandaloneApp();
-#endif
+      // Use wrapper type to detect standalone, not platform
+      juce::PluginHostType hostType;
+      bool isStandaloneEnv = (hostType.getPluginLoadedAs() == juce::AudioProcessor::wrapperType_Standalone);
+      if (!isStandaloneEnv && juce::JUCEApplicationBase::isStandaloneApp()) {
+          isStandaloneEnv = true; // Fallback for non-plugin builds
+      }
 
       if (isStandaloneEnv) {
           isPlaying = true;
