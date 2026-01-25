@@ -3,6 +3,7 @@ import { WaveformDisplay } from './components/WaveformDisplay';
 import { ControlPanel } from './components/ControlPanel';
 import { RotateCcw, Settings, ArrowLeft, ChevronDown } from 'lucide-react';
 import { useJuceBridge } from '../hooks/useJuceBridge';
+import LogoUrl from '../ca5logo.svg';
 
 export default function App() {
   // Always playing in plugin mode
@@ -185,7 +186,11 @@ export default function App() {
 
   // Render Delay Adjust value safely
   const delayAdjustValue = parameters['delayAdjust'] ? Math.round(parameters['delayAdjust']) : 0;
-  const inputEnabled = (parameters['inputEnabled'] ?? 1) > 0.5;
+  
+  // inputEnabled: true = EXT INPUT, false = internal sample
+  const inputEnabled = parameters['inputEnabled'] !== undefined 
+    ? parameters['inputEnabled'] > 0.5 
+    : false; // Default to false (internal sample) until parameter is received
 
   // Track selected sample name for UI display
   const [currentSample, setCurrentSample] = useState<string>('amen140.wav');
@@ -216,6 +221,9 @@ export default function App() {
                             } else {
                                 // Update local state for UI consistency
                                 setCurrentSample(val);
+
+                                // Force Input Disabled immediately (UI feedback)
+                                sendParameter('inputEnabled', 0);
 
                                 // Load Sample
                                 if (loadSample) {
@@ -330,7 +338,15 @@ export default function App() {
       {/* Footer Info */}
       <footer className={`px-6 py-3 border-t ${theme.borderColor} bg-slate-900/50`}>
         <div className={`flex items-center justify-between text-xs ${theme.textTertiary}`}>
-        produced by Ca5
+          <div className="flex items-center gap-3">
+             <span className="opacity-80">produced by</span>
+             <a href="https://ca5.github.io/AmenBreakChopper_doc/" target="_blank" rel="noreferrer" className="hover:opacity-80 transition-opacity" title="Documentation">
+               <img src={LogoUrl} alt="Ca5" className="h-5" />
+             </a>
+          </div>
+          <a href="https://ca5.github.io/AmenBreakChopper_doc/" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">
+            Docs
+          </a>
         </div>
       </footer>
     </div>

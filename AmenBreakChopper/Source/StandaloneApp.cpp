@@ -16,7 +16,7 @@
 #include <stdio.h> // For printf
 
 #if JUCE_USE_CUSTOM_PLUGIN_STANDALONE_APP
-// #error "CONFIRMED_CUSTOM_APP_IS_ACTIVE" // PROBE REMOVED
+// #error "CONFIRMED_CUSTOM_APP_IS_ACTIVE" // VERIFIED: Macro is active
 
 #include <juce_audio_plugin_client/Standalone/juce_StandaloneFilterWindow.h>
 
@@ -46,6 +46,7 @@ public:
         : DocumentWindow (name, backgroundColour, DocumentWindow::allButtons)
 #endif
     {
+        DBG("[ABC-Standalone] CustomStandaloneWindow constructor starting");
 #if JUCE_IOS
         // Disable native title bar
         setUsingNativeTitleBar (false);
@@ -64,12 +65,35 @@ public:
 #endif
         
         // 1. Initialize the Plugin Holder (The Engine)
+        DBG("[ABC-Standalone] About to create StandalonePluginHolder");
         // getInstance() might return null if we haven't created it yet. 
         // We take ownership.
         pluginHolder.reset (new juce::StandalonePluginHolder (settingsToUse));
 
-        // 2. Programmatically force Unmute (Step 1 of Research)
-        pluginHolder->getMuteInputValue().setValue(false);
+        DBG("[ABC-Standalone] StandalonePluginHolder created successfully");
+
+        // 2. Programmatically force MUTE (Critical Fix)
+        // Setting to FALSE enables hardware monitoring (input passthrough)
+        // Setting to TRUE forces audio through processBlock
+        pluginHolder->getMuteInputValue().setValue(true);
+        
+        // 3. Force Audio Device Setup (iOS fix)
+        // Ensure we request Input AND Output channels.
+        // StandalonePluginHolder defaults can be weird on iOS.
+        auto desc = juce::AudioDeviceManager::AudioDeviceSetup();
+        
+        // Get current setup or defaults
+        pluginHolder->deviceManager.getAudioDeviceSetup(desc);
+        
+        desc.inputChannels.setBit(0); // Enable Input 1
+        desc.inputChannels.setBit(1); // Enable Input 2
+        desc.outputChannels.setBit(0); // Enable Output 1
+        desc.outputChannels.setBit(1); // Enable Output 2
+        
+        // Error handling omitted for brevity, but this forces channel count request
+        juce::String err = pluginHolder->deviceManager.initialise(2, 2, nullptr, true, 
+                                                                  juce::String(), &desc);
+        DBG("[ABC-Standalone] Device Init Result: " << err);
 
         // 3. Create and show the Plugin Editor
         if (auto* processor = pluginHolder->processor.get())
@@ -111,6 +135,7 @@ public:
         if (auto* props = juce::StandalonePluginHolder::getInstance()->settings.get())
             props->setValue ("windowState", getWindowStateAsString());
             
+        setContentOwned(nullptr, true); // Explicitly delete editor first
         pluginHolder = nullptr;  // shut down audio
     }
 
@@ -149,10 +174,11 @@ public:
 
         settings.setStorageParameters (options);
         
-        // Force muteAudioInput to false in property set as well
+        // Force muteAudioInput to TRUE in property set (CRITICAL FIX)
+        // This disables hardware monitoring and forces audio through processBlock
         if (auto* props = settings.getUserSettings())
         {
-            props->setValue("muteAudioInput", false);
+            props->setValue("muteAudioInput", true);
             // props->setShouldSave(true);
         }
 
@@ -184,6 +210,9 @@ private:
     std::unique_ptr<CustomStandaloneWindow> mainWindow;
 };
 
-START_JUCE_APPLICATION (AmenBreakChopperStandaloneApp)
+#endif // JUCE_USE_CUSTOM_PLUGIN_STANDALONE_APP
 
+// CRITICAL: This must be OUTSIDE the #if block to always be active
+#if JUCE_USE_CUSTOM_PLUGIN_STANDALONE_APP
+START_JUCE_APPLICATION (AmenBreakChopperStandaloneApp)
 #endif

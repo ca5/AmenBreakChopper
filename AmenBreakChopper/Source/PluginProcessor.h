@@ -12,6 +12,19 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_osc/juce_osc.h>
 
+#if JUCE_IOS || JUCE_MAC
+#include <os/log.h>
+// Custom Logger for iOS using os_log (Unified Logging System)
+class IOSLogger : public juce::Logger {
+public:
+    void logMessage(const juce::String& message) override {
+        // Use os_log_with_type from <os/log.h> which is C-compatible
+        // %{public}s ensures the string is not redacted in production logs
+        os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_DEBUG, "[ABC] %{public}s", message.toRawUTF8());
+    }
+};
+#endif
+
 struct MidiClockTracker {
   double lastClockTime{0.0};
   double detectedBpm{120.0};
@@ -139,6 +152,7 @@ private:
   std::atomic<int> mActiveBufferIndex { 0 };
   std::atomic<bool> mPendingSampleSwitch { false };
   std::atomic<float> mPendingBpm { 120.0f };
+  std::atomic<int> mWarmUpCounter { 0 }; // Added for audio warm-up
   
   std::atomic<bool> mIsSampleLoaded{false}; 
   double mSampleBufferRates[2] { 44100.0, 44100.0 };
@@ -169,6 +183,7 @@ private:
   MidiClockTracker mMidiClockTracker;
   std::atomic<bool> mUsingMidiClock{false};
   double mMidiClockPpq{0.0}; // Synthesized phase from MIDI clock ticks
+  double mInternalPpqAccumulator{0.0}; // For Standalone/Manual time tracking
 
   // --- OSC State ---
   juce::OSCSender mSender;
@@ -180,6 +195,9 @@ private:
   
   // Initialization flag
   bool mIsInitialized { false };
+  
+  // Custom Logger
+  std::unique_ptr<juce::Logger> mIosLogger;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AmenBreakChopperAudioProcessor)
 };
