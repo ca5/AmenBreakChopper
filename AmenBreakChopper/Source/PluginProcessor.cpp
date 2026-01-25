@@ -22,6 +22,7 @@ AmenBreakChopperAudioProcessor::AmenBreakChopperAudioProcessor()
   mReceiver.addListener(this);
   mValueTreeState.addParameterListener("oscSendPort", this);
   mValueTreeState.addParameterListener("oscReceivePort", this);
+  mValueTreeState.addParameterListener("audioSource", this); // Listen for audio source changes
   
 #if JUCE_IOS || JUCE_MAC
      mIosLogger = std::make_unique<IOSLogger>();
@@ -35,16 +36,26 @@ AmenBreakChopperAudioProcessor::AmenBreakChopperAudioProcessor()
 
   // --- Defaults for Standalone vs Plugin ---
   if (juce::JUCEApplicationBase::isStandaloneApp()) {
-      // Standalone: Default to internal samples
+      // Standalone: Default to Amen140
+      if (auto* p = mValueTreeState.getParameter("audioSource")) {
+          if (auto* choice = dynamic_cast<juce::AudioParameterChoice*>(p)) {
+              p->setValueNotifyingHost(choice->convertTo0to1(1)); // Index 1 = Amen140
+          }
+      }
       // inputEnabled: false (0.0f) = internal samples, true (1.0f) = EXT INPUT
       if (auto* p = mValueTreeState.getParameter("inputEnabled"))
           p->setValueNotifyingHost(0.0f); // Disable external input, use internal samples
-      DBG("[ABC] Constructor: Set inputEnabled = 0.0 for Standalone (internal samples)");
+      DBG("[ABC] Constructor: Set audioSource=Amen140, inputEnabled=0.0 for Standalone");
   } else {
       // Plugin: Default to EXT INPUT
+      if (auto* p = mValueTreeState.getParameter("audioSource")) {
+          if (auto* choice = dynamic_cast<juce::AudioParameterChoice*>(p)) {
+              p->setValueNotifyingHost(choice->convertTo0to1(0)); // Index 0 = EXT INPUT
+          }
+      }
       if (auto* p = mValueTreeState.getParameter("inputEnabled"))
           p->setValueNotifyingHost(1.0f); // Enable external input
-      DBG("[ABC] Constructor: Set inputEnabled = 1.0 for Plugin (EXT INPUT)");
+      DBG("[ABC] Constructor: Set audioSource=EXT INPUT, inputEnabled=1.0 for Plugin");
   }
 }
 
@@ -166,8 +177,14 @@ AmenBreakChopperAudioProcessor::createParameterLayout() {
       "bpmSyncMode", "BPM Sync Mode", bpmModes, 0));
   layout.add(std::make_unique<juce::AudioParameterFloat>(
       "internalBpm", "Internal BPM", 40.0f, 300.0f, 120.0f));
+  
+  // Audio Source Selection: EXT INPUT, Amen140, Amen160, Amen180, Amen200
+  juce::StringArray audioSources = {"EXT INPUT", "Amen140", "Amen160", "Amen180", "Amen200"};
+  layout.add(std::make_unique<juce::AudioParameterChoice>(
+      "audioSource", "Audio Source", audioSources, 0)); // Default to EXT INPUT
+  
   layout.add(std::make_unique<juce::AudioParameterBool>(
-      "inputEnabled", "Input Enabled", false)); // Default to EXT INPUT for plugin mode
+      "inputEnabled", "Input Enabled", false)); // Deprecated, kept for compatibility
   layout.add(std::make_unique<juce::AudioParameterInt>(
       "inputChanL", "Input Channel L", 1, 8, 1));
   layout.add(std::make_unique<juce::AudioParameterInt>(
@@ -236,6 +253,43 @@ void AmenBreakChopperAudioProcessor::parameterChanged(
     if (!mReceiver.connect((int)newValue))
       juce::Logger::writeToLog(
           "AmenBreakChopper: Failed to connect OSC receiver on port change.");
+  } else if (parameterID == "audioSource") {
+    // Handle audio source parameter changes (for state restoration)
+    int audioSourceIndex = 0;
+    if (auto* p = mValueTreeState.getParameter("audioSource")) {
+        if (auto* choice = dynamic_cast<juce::AudioParameterChoice*>(p)) {
+            audioSourceIndex = choice->getIndex();
+        }
+    }
+    
+    DBG("[ABC] parameterChanged: audioSource = " << audioSourceIndex);
+    
+    // audioSource: 0=EXT INPUT, 1=Amen140, 2=Amen160, 3=Amen180, 4=Amen200
+    if (audioSourceIndex > 0) {
+        // Load internal sample
+        juce::String sampleToLoad = "";
+        if (audioSourceIndex == 1) sampleToLoad = "amen140.wav";
+        else if (audioSourceIndex == 2) sampleToLoad = "amen160.wav";
+        else if (audioSourceIndex == 3) sampleToLoad = "amen180.wav";
+        else if (audioSourceIndex == 4) sampleToLoad = "amen200.wav";
+        
+        if (sampleToLoad.isNotEmpty()) {
+            DBG("[ABC] parameterChanged: Loading sample: " << sampleToLoad);
+            loadBuiltInSample(sampleToLoad);
+            
+            // Force immediate switch
+            if (mPendingSampleSwitch.load()) {
+                mActiveBufferIndex.store(1 - mActiveBufferIndex.load());
+                mIsSampleLoaded = true;
+                mPendingSampleSwitch = false;
+                mWaveformDirty = true;
+                DBG("[ABC] parameterChanged: Sample switched successfully");
+            }
+        }
+    } else {
+        // EXT INPUT mode - no sample to load
+        DBG("[ABC] parameterChanged: EXT INPUT mode selected");
+    }
   }
 }
 
@@ -385,35 +439,63 @@ void AmenBreakChopperAudioProcessor::prepareToPlay(double sampleRate,
           isStandalone = true;
       }
 
-      // Load Amen140 for both Standalone and Plugin modes
-      // This ensures smooth operation and sample availability
-      loadBuiltInSample("amen140.wav");
-      DBG("[ABC] prepareToPlay: loadBuiltInSample called (" << (isStandalone ? "Standalone" : "Plugin") << " mode)");
+      // Load sample based on audioSource parameter
+      // This allows correct restoration of saved state
+      int audioSourceIndex = 0;
+      if (auto* p = mValueTreeState.getParameter("audioSource")) {
+          if (auto* choice = dynamic_cast<juce::AudioParameterChoice*>(p)) {
+              audioSourceIndex = choice->getIndex();
+          }
+      }
       
-      // Force immediate switch for startup
-      if (mPendingSampleSwitch.load()) {
-         DBG("[ABC] prepareToPlay: Pending sample switch detected, applying now");
-         mActiveBufferIndex.store(1 - mActiveBufferIndex.load());
-         mIsSampleLoaded = true;
-         mPendingSampleSwitch = false; 
-         
-         // Apply Pending Params immediately
-         float pendingBpm = mPendingBpm.load();
-         mCurrentBpm.store(pendingBpm);
-         
-         if (auto* p = mValueTreeState.getParameter("internalBpm")) {
-             if (auto* fp = dynamic_cast<juce::AudioParameterFloat*>(p)) {
-                 fp->setValueNotifyingHost(fp->convertTo0to1(pendingBpm));
-             }
-         }
-         if (auto* p = mValueTreeState.getParameter("bpmSyncMode")) {
-             // Use raw set for safety during init
-             if (auto* raw = mValueTreeState.getRawParameterValue("bpmSyncMode"))
-                 raw->store(isStandalone ? 1.0f : 0.0f); // Standalone: Manual, Plugin: Host
-             // p->setValueNotifyingHost(1.0f); 
-         }
+      DBG("[ABC] prepareToPlay: audioSourceIndex = " << audioSourceIndex);
+      
+      // audioSource: 0=EXT INPUT, 1=Amen140, 2=Amen160, 3=Amen180, 4=Amen200
+      bool shouldLoadSample = (audioSourceIndex > 0); // Load sample if not EXT INPUT
+      juce::String sampleToLoad = "";
+      
+      if (audioSourceIndex == 1) sampleToLoad = "amen140.wav";
+      else if (audioSourceIndex == 2) sampleToLoad = "amen160.wav";
+      else if (audioSourceIndex == 3) sampleToLoad = "amen180.wav";
+      else if (audioSourceIndex == 4) sampleToLoad = "amen200.wav";
+      
+      if (!mIsSampleLoaded && mSampleBuffers[0].getNumSamples() == 0 && shouldLoadSample) {
+          // Load the selected sample
+          loadBuiltInSample(sampleToLoad);
+          DBG("[ABC] prepareToPlay: loadBuiltInSample called (" << (isStandalone ? "Standalone" : "Plugin") << " mode): " << sampleToLoad);
+          
+          // Force immediate switch for startup
+          if (mPendingSampleSwitch.load()) {
+             DBG("[ABC] prepareToPlay: Pending sample switch detected, applying now");
+             mActiveBufferIndex.store(1 - mActiveBufferIndex.load());
+             mIsSampleLoaded = true;
+             mPendingSampleSwitch = false; 
              
-         mWaveformDirty = true;
+             // Apply Pending Params immediately
+             float pendingBpm = mPendingBpm.load();
+             mCurrentBpm.store(pendingBpm);
+             
+             if (auto* p = mValueTreeState.getParameter("internalBpm")) {
+                 if (auto* fp = dynamic_cast<juce::AudioParameterFloat*>(p)) {
+                     fp->setValueNotifyingHost(fp->convertTo0to1(pendingBpm));
+                 }
+             }
+             
+             // Set bpmSyncMode to MANUAL when loading internal samples
+             if (auto* p = mValueTreeState.getParameter("bpmSyncMode")) {
+                 // Use raw set for safety during init
+                 if (auto* raw = mValueTreeState.getRawParameterValue("bpmSyncMode"))
+                     raw->store(1.0f); // Manual mode for internal samples
+             }
+                 
+             mWaveformDirty = true;
+          }
+      } else {
+          if (!shouldLoadSample) {
+              DBG("[ABC] prepareToPlay: EXT INPUT mode, skipping sample load");
+          } else {
+              DBG("[ABC] prepareToPlay: Sample already loaded, skipping initialization");
+          }
       }
 
       
@@ -493,14 +575,32 @@ void AmenBreakChopperAudioProcessor::processBlock(
   auto *bpmModeParam = mValueTreeState.getRawParameterValue("bpmSyncMode");
   bool useMidiClock = (bpmModeParam->load() >= 0.5f);
 
-  auto *inputEnabledParam = mValueTreeState.getRawParameterValue("inputEnabled");
-  bool inputEnabled = (inputEnabledParam->load() > 0.5f);
+  // Determine input mode from audioSource parameter
+  // audioSource: 0=EXT INPUT, 1=Amen140, 2=Amen160, 3=Amen180, 4=Amen200
+  int audioSourceIndex = 0;
+  if (auto* p = mValueTreeState.getParameter("audioSource")) {
+      if (auto* choice = dynamic_cast<juce::AudioParameterChoice*>(p)) {
+          audioSourceIndex = choice->getIndex();
+      }
+  }
   
-  // DEBUG: Log inputEnabled value once per second
+  bool inputEnabled = (audioSourceIndex == 0); // EXT INPUT when audioSource is 0
+  
+  // CRITICAL FIX: Ensure mDelayBuffer is initialized even if prepareToPlay wasn't called
+  // This happens when DAW loads a saved project without calling prepareToPlay
+  if (mDelayBuffer.getNumSamples() == 0 || mDelayBuffer.getNumChannels() == 0) {
+      juce::Logger::writeToLog("[ABC] processBlock: mDelayBuffer not initialized! Initializing now...");
+      const int delayBufferSize = static_cast<int>(getSampleRate() * 10.0); // 10 seconds
+      mDelayBuffer.setSize(2, delayBufferSize);
+      mDelayBuffer.clear();
+      juce::Logger::writeToLog("[ABC] processBlock: mDelayBuffer initialized with " + juce::String(delayBufferSize) + " samples");
+  }
+  
+  // DEBUG: Log audioSource value (temporarily logging every call for debugging)
   static int debugCounter = 0;
-  if (++debugCounter > 44100 / 256) {
+  if (++debugCounter > 100) {
       debugCounter = 0;
-      DBG("[ABC] inputEnabled param value: " << inputEnabledParam->load() << " -> " << (inputEnabled ? "EXT INPUT" : "INTERNAL SAMPLE"));
+      juce::Logger::writeToLog("[ABC] audioSource = " + juce::String(audioSourceIndex) + " -> " + (inputEnabled ? "EXT INPUT" : "INTERNAL SAMPLE"));
   }
 
 
@@ -668,6 +768,13 @@ void AmenBreakChopperAudioProcessor::processBlock(
   else if (bpmModeVal > 0.25f) bpmMode = 1; // MIDI Clock
   else bpmMode = 0; // Host
 
+  // DEBUG: Log bpmMode value once per second
+  static int bpmModeDebugCounter = 0;
+  if (++bpmModeDebugCounter > 44100 / 256) {
+      bpmModeDebugCounter = 0;
+      DBG("[ABC] bpmMode: " << bpmMode << " (val: " << bpmModeVal << "), isPlaying will be: " << (bpmMode == 0 ? "from host" : "true"));
+  }
+
   if (bpmMode == 1) { // MIDI Clock
       bpm = mMidiClockTracker.detectedBpm;
       ppqAtStartOfBlock = mMidiClockPpq;
@@ -677,8 +784,8 @@ void AmenBreakChopperAudioProcessor::processBlock(
       if (auto* p = mValueTreeState.getRawParameterValue("internalBpm")) {
           bpm = (double)p->load();
       }
-      // Emulate PPQ for Manual Mode
-      ppqAtStartOfBlock = mMidiClockPpq;
+      // Use Internal Accumulator for Manual Mode (not MIDI clock)
+      ppqAtStartOfBlock = mInternalPpqAccumulator;
       isPlaying = true;
   } else { // Host (0)
       bpm = positionInfo.getBpm().orFallback(120.0);
@@ -864,13 +971,16 @@ void AmenBreakChopperAudioProcessor::processBlock(
                    fp->setValueNotifyingHost(fp->convertTo0to1(newBpm));
                }
             }
-             // Set Manual Mode
-             if (auto* p = mValueTreeState.getParameter("bpmSyncMode")) {
-                 p->setValueNotifyingHost(1.0f); // Manual
-             }
-             // Disable Input
+            
+            // When switching to an internal sample, always set to MANUAL mode
+            // This allows the sample's BPM to be used
+            if (auto* p = mValueTreeState.getParameter("bpmSyncMode")) {
+                p->setValueNotifyingHost(1.0f); // Manual
+            }
+            
+            // Disable Input to use the loaded sample
             if (auto* p = mValueTreeState.getParameter("inputEnabled"))
-                 p->setValueNotifyingHost(0.0f);
+                p->setValueNotifyingHost(0.0f);
 
             // 3. Reset State
             mIsSampleLoaded = true;
@@ -1105,6 +1215,8 @@ void AmenBreakChopperAudioProcessor::getStateInformation(
 
 void AmenBreakChopperAudioProcessor::setStateInformation(const void *data,
                                                          int sizeInBytes) {
+  DBG("[ABC] setStateInformation: CALLED with " << sizeInBytes << " bytes");
+  
   std::unique_ptr<juce::XmlElement> xmlState(
       getXmlFromBinary(data, sizeInBytes));
 
@@ -1120,6 +1232,10 @@ void AmenBreakChopperAudioProcessor::setStateInformation(const void *data,
   if (auto *p = mValueTreeState.getParameter("noteSequencePosition"))
     p->setValueNotifyingHost(p->getDefaultValue());
 
+  // Debug: Log inputEnabled value after state restoration
+  if (auto* p = mValueTreeState.getRawParameterValue("inputEnabled")) {
+      DBG("[ABC] setStateInformation: inputEnabled = " << p->load());
+  }
 
   // Force Input disable on state load for Standalone (Safe Raw Set)
 #if JUCE_IOS
@@ -1129,6 +1245,43 @@ void AmenBreakChopperAudioProcessor::setStateInformation(const void *data,
 #endif
       if (auto* p = mValueTreeState.getRawParameterValue("inputEnabled"))
           p->store(0.0f);
+      DBG("[ABC] setStateInformation: Forced inputEnabled = 0.0 for Standalone");
+  }
+  
+  // Load sample based on restored audioSource parameter
+  // This ensures the correct sample is loaded when opening saved projects
+  int audioSourceIndex = 0;
+  if (auto* p = mValueTreeState.getParameter("audioSource")) {
+      if (auto* choice = dynamic_cast<juce::AudioParameterChoice*>(p)) {
+          audioSourceIndex = choice->getIndex();
+      }
+  }
+  
+  DBG("[ABC] setStateInformation: audioSourceIndex = " << audioSourceIndex);
+  
+  // audioSource: 0=EXT INPUT, 1=Amen140, 2=Amen160, 3=Amen180, 4=Amen200
+  if (audioSourceIndex > 0) {
+      juce::String sampleToLoad = "";
+      if (audioSourceIndex == 1) sampleToLoad = "amen140.wav";
+      else if (audioSourceIndex == 2) sampleToLoad = "amen160.wav";
+      else if (audioSourceIndex == 3) sampleToLoad = "amen180.wav";
+      else if (audioSourceIndex == 4) sampleToLoad = "amen200.wav";
+      
+      if (sampleToLoad.isNotEmpty()) {
+          DBG("[ABC] setStateInformation: Loading sample: " << sampleToLoad);
+          loadBuiltInSample(sampleToLoad);
+          
+          // Force immediate switch
+          if (mPendingSampleSwitch.load()) {
+              mActiveBufferIndex.store(1 - mActiveBufferIndex.load());
+              mIsSampleLoaded = true;
+              mPendingSampleSwitch = false;
+              mWaveformDirty = true;
+              DBG("[ABC] setStateInformation: Sample switched successfully");
+          }
+      }
+  } else {
+      DBG("[ABC] setStateInformation: EXT INPUT mode, no sample to load");
   }
 }
 

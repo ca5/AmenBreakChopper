@@ -192,11 +192,32 @@ export default function App() {
     ? parameters['inputEnabled'] > 0.5 
     : false; // Default to false (internal sample) until parameter is received
 
-  // Track selected sample name for UI display
-  const [currentSample, setCurrentSample] = useState<string>('amen140.wav');
+  // Read audioSource parameter from JUCE
+  // audioSource: 0=EXT INPUT, 1=Amen140, 2=Amen160, 3=Amen180, 4=Amen200
+  // Note: We're sending the index directly, not normalized values
+  const audioSourceParam = parameters['audioSource'] !== undefined 
+    ? Math.round(parameters['audioSource']) // Use value directly as index
+    : 0;
 
-  // Logic to determine dropdown value
-  const audioSourceValue = inputEnabled ? 'ext' : currentSample;
+  // Debug logging
+  if (parameters['audioSource'] !== undefined) {
+    console.log('[UI] audioSource raw value:', parameters['audioSource'], '→ index:', audioSourceParam);
+  }
+
+  // Map audioSource index to dropdown value
+  const audioSourceValue = (() => {
+    switch (audioSourceParam) {
+      case 0: return 'ext';
+      case 1: return 'amen140.wav';
+      case 2: return 'amen160.wav';
+      case 3: return 'amen180.wav';
+      case 4: return 'amen200.wav';
+      default: return 'ext';
+    }
+  })();
+
+  // Track selected sample name for UI display (deprecated, kept for compatibility)
+  const [currentSample, setCurrentSample] = useState<string>('amen140.wav');
 
   return (
     <div className={`h-screen bg-gradient-to-br ${theme.bgGradient} flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]`}>
@@ -217,15 +238,30 @@ export default function App() {
                         onChange={(e) => {
                             const val = e.target.value;
                             if (val === 'ext') {
+                                // EXT INPUT selected
+                                sendParameter('audioSource', 0); // 0 = EXT INPUT
                                 sendParameter('inputEnabled', 1);
+                                // When switching to EXT INPUT, set BPM sync to HOST mode
+                                // This allows DAW BPM to be used in plugin mode
+                                sendParameter('bpmSyncMode', 0);
                             } else {
+                                // Internal sample selected
+                                // Map sample name to audioSource index
+                                let audioSourceIndex = 0;
+                                if (val === 'amen140.wav') audioSourceIndex = 1;
+                                else if (val === 'amen160.wav') audioSourceIndex = 2;
+                                else if (val === 'amen180.wav') audioSourceIndex = 3;
+                                else if (val === 'amen200.wav') audioSourceIndex = 4;
+                                
+                                sendParameter('audioSource', audioSourceIndex);
+                                
                                 // Update local state for UI consistency
                                 setCurrentSample(val);
 
                                 // Force Input Disabled immediately (UI feedback)
                                 sendParameter('inputEnabled', 0);
 
-                                // Load Sample
+                                // Load Sample (this will set bpmSyncMode to MANUAL automatically)
                                 if (loadSample) {
                                   loadSample(val);
                                 }
