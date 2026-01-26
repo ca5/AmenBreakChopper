@@ -3,7 +3,7 @@ import { WaveformDisplay } from './components/WaveformDisplay';
 import { ControlPanel } from './components/ControlPanel';
 import { RotateCcw, Settings, ArrowLeft, ChevronDown } from 'lucide-react';
 import { useJuceBridge } from '../hooks/useJuceBridge';
-import LogoUrl from '../ca5logo.svg';
+import Ca5LogoPng from '../ca5logo.png';
 
 export default function App() {
   // Always playing in plugin mode
@@ -293,7 +293,7 @@ export default function App() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col p-6 gap-6 overflow-hidden">
+      <main className="flex-1 flex flex-col p-6 gap-6 overflow-y-auto">
         {view === 'main' ? (
           <>
             {/* Waveform Display */}
@@ -374,10 +374,10 @@ export default function App() {
       {/* Footer Info */}
       <footer className={`px-6 py-3 border-t ${theme.borderColor} bg-slate-900/50`}>
         <div className={`flex items-center justify-between text-xs ${theme.textTertiary}`}>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5">
              <span className="opacity-80">produced by</span>
              <a href="https://ca5.github.io/AmenBreakChopper_doc/" target="_blank" rel="noreferrer" className="hover:opacity-80 transition-opacity" title="Documentation">
-               <img src={LogoUrl} alt="Ca5" className="h-5" />
+               <img src={Ca5LogoPng} alt="ca5" className="h-5 w-5" />
              </a>
           </div>
           <a href="https://ca5.github.io/AmenBreakChopper_doc/" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">
