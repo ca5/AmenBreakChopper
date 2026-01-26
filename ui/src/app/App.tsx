@@ -3,6 +3,7 @@ import { WaveformDisplay } from './components/WaveformDisplay';
 import { ControlPanel } from './components/ControlPanel';
 import { RotateCcw, Settings, ArrowLeft, ChevronDown } from 'lucide-react';
 import { useJuceBridge } from '../hooks/useJuceBridge';
+import Ca5LogoPng from '../ca5logo.png';
 
 export default function App() {
   // Always playing in plugin mode
@@ -185,13 +186,38 @@ export default function App() {
 
   // Render Delay Adjust value safely
   const delayAdjustValue = parameters['delayAdjust'] ? Math.round(parameters['delayAdjust']) : 0;
-  const inputEnabled = (parameters['inputEnabled'] ?? 1) > 0.5;
+  
+  // inputEnabled: true = EXT INPUT, false = internal sample
+  const inputEnabled = parameters['inputEnabled'] !== undefined 
+    ? parameters['inputEnabled'] > 0.5 
+    : false; // Default to false (internal sample) until parameter is received
 
-  // Track selected sample name for UI display
+  // Read audioSource parameter from JUCE
+  // audioSource: 0=EXT INPUT, 1=Amen140, 2=Amen160, 3=Amen180, 4=Amen200
+  // Note: We're sending the index directly, not normalized values
+  const audioSourceParam = parameters['audioSource'] !== undefined 
+    ? Math.round(parameters['audioSource']) // Use value directly as index
+    : 0;
+
+  // Debug logging
+  if (parameters['audioSource'] !== undefined) {
+    console.log('[UI] audioSource raw value:', parameters['audioSource'], '→ index:', audioSourceParam);
+  }
+
+  // Map audioSource index to dropdown value
+  const audioSourceValue = (() => {
+    switch (audioSourceParam) {
+      case 0: return 'ext';
+      case 1: return 'amen140.wav';
+      case 2: return 'amen160.wav';
+      case 3: return 'amen180.wav';
+      case 4: return 'amen200.wav';
+      default: return 'ext';
+    }
+  })();
+
+  // Track selected sample name for UI display (deprecated, kept for compatibility)
   const [currentSample, setCurrentSample] = useState<string>('amen140.wav');
-
-  // Logic to determine dropdown value
-  const audioSourceValue = inputEnabled ? 'ext' : currentSample;
 
   return (
     <div className={`h-screen bg-gradient-to-br ${theme.bgGradient} flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]`}>
@@ -212,12 +238,30 @@ export default function App() {
                         onChange={(e) => {
                             const val = e.target.value;
                             if (val === 'ext') {
+                                // EXT INPUT selected
+                                sendParameter('audioSource', 0); // 0 = EXT INPUT
                                 sendParameter('inputEnabled', 1);
+                                // When switching to EXT INPUT, set BPM sync to HOST mode
+                                // This allows DAW BPM to be used in plugin mode
+                                sendParameter('bpmSyncMode', 0);
                             } else {
+                                // Internal sample selected
+                                // Map sample name to audioSource index
+                                let audioSourceIndex = 0;
+                                if (val === 'amen140.wav') audioSourceIndex = 1;
+                                else if (val === 'amen160.wav') audioSourceIndex = 2;
+                                else if (val === 'amen180.wav') audioSourceIndex = 3;
+                                else if (val === 'amen200.wav') audioSourceIndex = 4;
+                                
+                                sendParameter('audioSource', audioSourceIndex);
+                                
                                 // Update local state for UI consistency
                                 setCurrentSample(val);
 
-                                // Load Sample
+                                // Force Input Disabled immediately (UI feedback)
+                                sendParameter('inputEnabled', 0);
+
+                                // Load Sample (this will set bpmSyncMode to MANUAL automatically)
                                 if (loadSample) {
                                   loadSample(val);
                                 }
@@ -249,7 +293,7 @@ export default function App() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col p-6 gap-6 overflow-hidden">
+      <main className="flex-1 flex flex-col p-6 gap-6 overflow-y-auto">
         {view === 'main' ? (
           <>
             {/* Waveform Display */}
@@ -330,7 +374,15 @@ export default function App() {
       {/* Footer Info */}
       <footer className={`px-6 py-3 border-t ${theme.borderColor} bg-slate-900/50`}>
         <div className={`flex items-center justify-between text-xs ${theme.textTertiary}`}>
-        produced by Ca5
+          <div className="flex items-center gap-1.5">
+             <span className="opacity-80">produced by</span>
+             <a href="https://ca5.github.io/AmenBreakChopper_doc/" target="_blank" rel="noreferrer" className="hover:opacity-80 transition-opacity" title="Documentation">
+               <img src={Ca5LogoPng} alt="ca5" className="h-5 w-5" />
+             </a>
+          </div>
+          <a href="https://ca5.github.io/AmenBreakChopper_doc/" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">
+            Docs
+          </a>
         </div>
       </footer>
     </div>
