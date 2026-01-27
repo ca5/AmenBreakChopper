@@ -266,6 +266,18 @@ AmenBreakChopperAudioProcessor::createParameterLayout() {
   layout.add(std::make_unique<juce::AudioParameterFloat>(
       "sliderValue", "Slider Value", 0.0f, 1.0f, 0.0f));
 
+  // Toggle Buttons (4 square buttons)
+  layout.add(std::make_unique<juce::AudioParameterInt>(
+      "toggleButtonChannel", "Toggle Button MIDI Channel", 0, 15, 0));
+  layout.add(std::make_unique<juce::AudioParameterBool>(
+      "toggleButton1", "Toggle Button 1", false));
+  layout.add(std::make_unique<juce::AudioParameterBool>(
+      "toggleButton2", "Toggle Button 2", false));
+  layout.add(std::make_unique<juce::AudioParameterBool>(
+      "toggleButton3", "Toggle Button 3", false));
+  layout.add(std::make_unique<juce::AudioParameterBool>(
+      "toggleButton4", "Toggle Button 4", false));
+
   return layout;
 }
 
@@ -1250,6 +1262,49 @@ void AmenBreakChopperAudioProcessor::processBlock(
       processedMidi.addEvent(msg, 0);
       
       mLastSliderValue = sliderValue;
+    }
+
+    // Toggle Buttons (4 square buttons)
+    int toggleChannel = (int)mValueTreeState.getRawParameterValue("toggleButtonChannel")->load();
+    
+    // Toggle Button 1 (CC 30)
+    bool toggleButton1 = mValueTreeState.getRawParameterValue("toggleButton1")->load() > 0.5f;
+    if (toggleButton1 != mLastToggleButton1) {
+      int ccValue = toggleButton1 ? 127 : 0;
+      juce::MidiMessage msg = juce::MidiMessage::controllerEvent(
+          toggleChannel + 1, 30, ccValue);
+      processedMidi.addEvent(msg, 0);
+      mLastToggleButton1 = toggleButton1;
+    }
+    
+    // Toggle Button 2 (CC 31)
+    bool toggleButton2 = mValueTreeState.getRawParameterValue("toggleButton2")->load() > 0.5f;
+    if (toggleButton2 != mLastToggleButton2) {
+      int ccValue = toggleButton2 ? 127 : 0;
+      juce::MidiMessage msg = juce::MidiMessage::controllerEvent(
+          toggleChannel + 1, 31, ccValue);
+      processedMidi.addEvent(msg, 0);
+      mLastToggleButton2 = toggleButton2;
+    }
+    
+    // Toggle Button 3 (CC 32)
+    bool toggleButton3 = mValueTreeState.getRawParameterValue("toggleButton3")->load() > 0.5f;
+    if (toggleButton3 != mLastToggleButton3) {
+      int ccValue = toggleButton3 ? 127 : 0;
+      juce::MidiMessage msg = juce::MidiMessage::controllerEvent(
+          toggleChannel + 1, 32, ccValue);
+      processedMidi.addEvent(msg, 0);
+      mLastToggleButton3 = toggleButton3;
+    }
+    
+    // Toggle Button 4 (CC 33)
+    bool toggleButton4 = mValueTreeState.getRawParameterValue("toggleButton4")->load() > 0.5f;
+    if (toggleButton4 != mLastToggleButton4) {
+      int ccValue = toggleButton4 ? 127 : 0;
+      juce::MidiMessage msg = juce::MidiMessage::controllerEvent(
+          toggleChannel + 1, 33, ccValue);
+      processedMidi.addEvent(msg, 0);
+      mLastToggleButton4 = toggleButton4;
     }
   }
 

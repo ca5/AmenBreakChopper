@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { WaveformDisplay } from './components/WaveformDisplay';
 import { ControlPanel } from './components/ControlPanel';
 import { MidiController } from './components/MidiController';
+import { ToggleButtons } from './components/ToggleButtons';
 import { RotateCcw, Settings, ArrowLeft, ChevronDown } from 'lucide-react';
 import { useJuceBridge } from '../hooks/useJuceBridge';
 import { useSwipeable } from 'react-swipeable';
@@ -16,7 +17,7 @@ export default function App() {
     new Set(Array.from({ length: 16 }, (_, i) => i)) // All slices active by default
   );
   const [colorTheme, setColorTheme] = useState<'green' | 'blue' | 'purple' | 'red' | 'orange' | 'cyan' | 'pink'>('green');
-  const [showMidiController, setShowMidiController] = useState(false);
+  const [currentScreen, setCurrentScreen] = useState<'timing' | 'midi' | 'toggle'>('timing');
 
   // Hoisted state for status display
   const [originalPlayhead, setOriginalPlayhead] = useState(0);
@@ -227,16 +228,24 @@ export default function App() {
     ? parameters['midiControllerEnabled'] > 0.5
     : false;
 
-  // Swipe handlers (vertical to avoid conflict with horizontal slider)
+  // Swipe handlers (vertical to cycle through 3 screens)
   const swipeHandlers = useSwipeable({
     onSwipedUp: () => {
       if (midiControllerEnabled) {
-        setShowMidiController(true);
+        if (currentScreen === 'timing') {
+          setCurrentScreen('midi');
+        } else if (currentScreen === 'midi') {
+          setCurrentScreen('toggle');
+        }
       }
     },
     onSwipedDown: () => {
       if (midiControllerEnabled) {
-        setShowMidiController(false);
+        if (currentScreen === 'toggle') {
+          setCurrentScreen('midi');
+        } else if (currentScreen === 'midi') {
+          setCurrentScreen('timing');
+        }
       }
     },
     trackMouse: true,
@@ -328,10 +337,12 @@ export default function App() {
               triggeredPlayhead={triggeredPlayhead}
             />
 
-            {/* Performance Controls / MIDI Controller */}
+            {/* Performance Controls / MIDI Controller / Toggle Buttons */}
             <div {...swipeHandlers} className={`flex flex-col items-center justify-between px-4 py-3 gap-3 rounded-xl border ${theme.borderColor} ${theme.panelBg}`}>
-              {showMidiController && midiControllerEnabled ? (
+              {currentScreen === 'midi' && midiControllerEnabled ? (
                 <MidiController colorTheme={colorTheme} />
+              ) : currentScreen === 'toggle' && midiControllerEnabled ? (
+                <ToggleButtons colorTheme={colorTheme} />
               ) : (
                 <>
               <div className="flex items-center gap-4 w-full justify-between">

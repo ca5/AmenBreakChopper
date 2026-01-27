@@ -368,6 +368,22 @@ export function ControlPanel({ colorTheme, onThemeChange }: ControlPanelProps) {
             </div>
           </div>
 
+          <div className={`h-px ${theme.border} my-4`} />
+          <h4 className={`text-xs uppercase font-bold ${theme.textTertiary} mb-2`}>Toggle Buttons</h4>
+
+          {/* Toggle Button Channel */}
+          <div className="flex items-center justify-between">
+            <label className={`text-sm ${theme.textSecondary}`}>Toggle Button Channel</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                value={getIntParam('toggleButtonChannel', 0) + 1}
+                onChange={(e) => setParam('toggleButtonChannel', Math.max(0, Math.min(15, Number(e.target.value) - 1)))}
+                className={`w-20 px-3 py-1.5 border rounded ${theme.inputBg} ${theme.textSecondary} text-center focus:outline-none`}
+              />
+            </div>
+          </div>
+
         </div>
       ),
     },

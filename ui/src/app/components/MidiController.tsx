@@ -135,7 +135,7 @@ export function MidiController({ colorTheme }: MidiControllerProps) {
       {/* Radio Button Group */}
       <div className="flex flex-col gap-2">
         <span className={`text-xs font-bold tracking-wider ${theme.textSecondary}`}>
-          RADIO GROUP
+         RETRIGGER (EXT MIDI) 
         </span>
         <div 
           ref={radioGroupRef}
@@ -166,7 +166,7 @@ export function MidiController({ colorTheme }: MidiControllerProps) {
       {/* Push Button & Slider */}
       <div className="flex items-center gap-3">
         <span className={`text-xs font-bold tracking-wider ${theme.textSecondary}`}>
-          CONTROL
+          SLOW (EXT MIDI)
         </span>
         
         {/* Push Button (Dot) */}
