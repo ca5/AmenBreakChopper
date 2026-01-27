@@ -238,6 +238,46 @@ AmenBreakChopperAudioProcessor::createParameterLayout() {
   layout.add(std::make_unique<juce::AudioParameterChoice>(
       "colorTheme", "Color Theme", themeNames, 0));
 
+  // MIDI Controller Settings
+  layout.add(std::make_unique<juce::AudioParameterBool>(
+      "midiControllerEnabled", "MIDI Controller Enabled", false));
+  
+  // Radio Button Group
+  layout.add(std::make_unique<juce::AudioParameterInt>(
+      "radioGroupChannel", "Radio Group MIDI Channel", 0, 15, 0));
+  layout.add(std::make_unique<juce::AudioParameterInt>(
+      "radioGroupCC", "Radio Group CC Number", 0, 127, 50));
+  layout.add(std::make_unique<juce::AudioParameterInt>(
+      "radioGroupSelection", "Radio Group Selection", -1, 7, -1));
+  
+  // Push Button
+  layout.add(std::make_unique<juce::AudioParameterInt>(
+      "pushButtonChannel", "Push Button MIDI Channel", 0, 15, 0));
+  layout.add(std::make_unique<juce::AudioParameterInt>(
+      "pushButtonCC", "Push Button CC Number", 0, 127, 5));
+  layout.add(std::make_unique<juce::AudioParameterBool>(
+      "pushButtonState", "Push Button State", false));
+  
+  // Slider
+  layout.add(std::make_unique<juce::AudioParameterInt>(
+      "sliderChannel", "Slider MIDI Channel", 0, 15, 0));
+  layout.add(std::make_unique<juce::AudioParameterInt>(
+      "sliderCC", "Slider CC Number", 0, 127, 6));
+  layout.add(std::make_unique<juce::AudioParameterFloat>(
+      "sliderValue", "Slider Value", 0.0f, 1.0f, 0.0f));
+
+  // Toggle Buttons (4 square buttons)
+  layout.add(std::make_unique<juce::AudioParameterInt>(
+      "toggleButtonChannel", "Toggle Button MIDI Channel", 0, 15, 0));
+  layout.add(std::make_unique<juce::AudioParameterBool>(
+      "toggleButton1", "Toggle Button 1", false));
+  layout.add(std::make_unique<juce::AudioParameterBool>(
+      "toggleButton2", "Toggle Button 2", false));
+  layout.add(std::make_unique<juce::AudioParameterBool>(
+      "toggleButton3", "Toggle Button 3", false));
+  layout.add(std::make_unique<juce::AudioParameterBool>(
+      "toggleButton4", "Toggle Button 4", false));
+
   return layout;
 }
 
@@ -1157,6 +1197,119 @@ void AmenBreakChopperAudioProcessor::processBlock(
   } else {
       mSamplesToNextBeat.store(0.0);
   }
+
+  // --- MIDI Controller Output ---
+  // Only send MIDI if controller is enabled
+  bool midiControllerEnabled = mValueTreeState.getRawParameterValue("midiControllerEnabled")->load() > 0.5f;
+  
+  if (midiControllerEnabled) {
+    // Radio Button Group
+    int radioGroupSelection = (int)mValueTreeState.getRawParameterValue("radioGroupSelection")->load();
+    if (radioGroupSelection != mLastRadioGroupSelection) {
+      int radioChannel = (int)mValueTreeState.getRawParameterValue("radioGroupChannel")->load();
+      int radioCC = (int)mValueTreeState.getRawParameterValue("radioGroupCC")->load();
+      
+      // Send note-off for previous selection (if valid)
+      if (mLastRadioGroupSelection >= 0 && mLastRadioGroupSelection <= 7) {
+        juce::MidiMessage noteOff = juce::MidiMessage::controllerEvent(
+            radioChannel + 1, radioCC, 0);
+        processedMidi.addEvent(noteOff, 0);
+      }
+      
+      // Send note-on for new selection (or 0 if -1 = no selection)
+      if (radioGroupSelection >= 0 && radioGroupSelection <= 7) {
+        // Calculate CC value: floor(127 / 10 * (index + 1))
+        int ccValue = static_cast<int>(std::floor(127.0 / 10.0 * (radioGroupSelection + 1)));
+        juce::MidiMessage noteOn = juce::MidiMessage::controllerEvent(
+            radioChannel + 1, radioCC, ccValue);
+        processedMidi.addEvent(noteOn, 0);
+      } else if (radioGroupSelection == -1) {
+        // Finger released, send 0
+        juce::MidiMessage noteOff = juce::MidiMessage::controllerEvent(
+            radioChannel + 1, radioCC, 0);
+        processedMidi.addEvent(noteOff, 0);
+      }
+      
+      mLastRadioGroupSelection = radioGroupSelection;
+    }
+    
+    // Push Button
+    bool pushButtonState = mValueTreeState.getRawParameterValue("pushButtonState")->load() > 0.5f;
+    if (pushButtonState != mLastPushButtonState) {
+      int pushChannel = (int)mValueTreeState.getRawParameterValue("pushButtonChannel")->load();
+      int pushCC = (int)mValueTreeState.getRawParameterValue("pushButtonCC")->load();
+      
+      int ccValue = pushButtonState ? 127 : 0;
+      juce::MidiMessage msg = juce::MidiMessage::controllerEvent(
+          pushChannel + 1, pushCC, ccValue);
+      processedMidi.addEvent(msg, 0);
+      
+      mLastPushButtonState = pushButtonState;
+    }
+    
+    // Slider
+    float sliderValue = mValueTreeState.getRawParameterValue("sliderValue")->load();
+    // Only send if value changed significantly (avoid flooding)
+    if (std::abs(sliderValue - mLastSliderValue) > 0.008f) { // ~1/127 resolution
+      int sliderChannel = (int)mValueTreeState.getRawParameterValue("sliderChannel")->load();
+      int sliderCC = (int)mValueTreeState.getRawParameterValue("sliderCC")->load();
+      
+      int ccValue = static_cast<int>(sliderValue * 127.0f);
+      ccValue = std::max(0, std::min(127, ccValue)); // Clamp to valid range
+      
+      juce::MidiMessage msg = juce::MidiMessage::controllerEvent(
+          sliderChannel + 1, sliderCC, ccValue);
+      processedMidi.addEvent(msg, 0);
+      
+      mLastSliderValue = sliderValue;
+    }
+
+    // Toggle Buttons (4 square buttons)
+    int toggleChannel = (int)mValueTreeState.getRawParameterValue("toggleButtonChannel")->load();
+    
+    // Toggle Button 1 (CC 30)
+    bool toggleButton1 = mValueTreeState.getRawParameterValue("toggleButton1")->load() > 0.5f;
+    if (toggleButton1 != mLastToggleButton1) {
+      int ccValue = toggleButton1 ? 127 : 0;
+      juce::MidiMessage msg = juce::MidiMessage::controllerEvent(
+          toggleChannel + 1, 30, ccValue);
+      processedMidi.addEvent(msg, 0);
+      mLastToggleButton1 = toggleButton1;
+    }
+    
+    // Toggle Button 2 (CC 31)
+    bool toggleButton2 = mValueTreeState.getRawParameterValue("toggleButton2")->load() > 0.5f;
+    if (toggleButton2 != mLastToggleButton2) {
+      int ccValue = toggleButton2 ? 127 : 0;
+      juce::MidiMessage msg = juce::MidiMessage::controllerEvent(
+          toggleChannel + 1, 31, ccValue);
+      processedMidi.addEvent(msg, 0);
+      mLastToggleButton2 = toggleButton2;
+    }
+    
+    // Toggle Button 3 (CC 32)
+    bool toggleButton3 = mValueTreeState.getRawParameterValue("toggleButton3")->load() > 0.5f;
+    if (toggleButton3 != mLastToggleButton3) {
+      int ccValue = toggleButton3 ? 127 : 0;
+      juce::MidiMessage msg = juce::MidiMessage::controllerEvent(
+          toggleChannel + 1, 32, ccValue);
+      processedMidi.addEvent(msg, 0);
+      mLastToggleButton3 = toggleButton3;
+    }
+    
+    // Toggle Button 4 (CC 33)
+    bool toggleButton4 = mValueTreeState.getRawParameterValue("toggleButton4")->load() > 0.5f;
+    if (toggleButton4 != mLastToggleButton4) {
+      int ccValue = toggleButton4 ? 127 : 0;
+      juce::MidiMessage msg = juce::MidiMessage::controllerEvent(
+          toggleChannel + 1, 33, ccValue);
+      processedMidi.addEvent(msg, 0);
+      mLastToggleButton4 = toggleButton4;
+    }
+  }
+
+  // Merge generated MIDI with output
+  midiMessages.swapWith(processedMidi);
 }
 
 //==============================================================================

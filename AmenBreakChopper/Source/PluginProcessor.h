@@ -179,6 +179,15 @@ private:
   int mLastDelayAdjustBwdCcValue{0};
   int mLastDelayAdjust{0};
 
+  // --- MIDI Controller State ---
+  int mLastRadioGroupSelection{-1};
+  bool mLastPushButtonState{false};
+  float mLastSliderValue{-1.0f};
+  bool mLastToggleButton1{false};
+  bool mLastToggleButton2{false};
+  bool mLastToggleButton3{false};
+  bool mLastToggleButton4{false};
+
   // --- External Input & Clock State ---
   MidiClockTracker mMidiClockTracker;
   std::atomic<bool> mUsingMidiClock{false};
