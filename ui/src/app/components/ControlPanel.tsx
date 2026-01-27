@@ -275,6 +275,99 @@ export function ControlPanel({ colorTheme, onThemeChange }: ControlPanelProps) {
             </div>
           </div>
 
+          <div className={`h-px ${theme.border} my-4`} />
+          <h4 className={`text-xs uppercase font-bold ${theme.textTertiary} mb-2`}>MIDI Controller</h4>
+
+          {/* MIDI Controller Enable/Disable */}
+          <div className="flex items-center justify-between mb-3">
+            <label className={`text-sm ${theme.textSecondary}`}>Enable MIDI Controller</label>
+            <button
+              onClick={() => setParam('midiControllerEnabled', getParam('midiControllerEnabled', 0) > 0.5 ? 0 : 1)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                getParam('midiControllerEnabled', 0) > 0.5
+                  ? `${theme.accentBg} text-white`
+                  : `bg-slate-700/50 ${theme.text}`
+              }`}
+            >
+              {getParam('midiControllerEnabled', 0) > 0.5 ? 'ON' : 'OFF'}
+            </button>
+          </div>
+
+          {/* Radio Group Settings */}
+          <div className="flex items-center justify-between">
+            <label className={`text-sm ${theme.textSecondary}`}>Radio Group Channel</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                value={getIntParam('radioGroupChannel', 0) + 1}
+                onChange={(e) => setParam('radioGroupChannel', Math.max(0, Math.min(15, Number(e.target.value) - 1)))}
+                className={`w-20 px-3 py-1.5 border rounded ${theme.inputBg} ${theme.textSecondary} text-center focus:outline-none`}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between mt-2">
+            <label className={`text-sm ${theme.textSecondary}`}>Radio Group CC</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                value={getIntParam('radioGroupCC', 50)}
+                onChange={(e) => setParam('radioGroupCC', Math.max(0, Math.min(127, Number(e.target.value))))}
+                className={`w-20 px-3 py-1.5 border rounded ${theme.inputBg} ${theme.textSecondary} text-center focus:outline-none`}
+              />
+            </div>
+          </div>
+
+          {/* Push Button Settings */}
+          <div className="flex items-center justify-between mt-3">
+            <label className={`text-sm ${theme.textSecondary}`}>Push Button Channel</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                value={getIntParam('pushButtonChannel', 0) + 1}
+                onChange={(e) => setParam('pushButtonChannel', Math.max(0, Math.min(15, Number(e.target.value) - 1)))}
+                className={`w-20 px-3 py-1.5 border rounded ${theme.inputBg} ${theme.textSecondary} text-center focus:outline-none`}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between mt-2">
+            <label className={`text-sm ${theme.textSecondary}`}>Push Button CC</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                value={getIntParam('pushButtonCC', 5)}
+                onChange={(e) => setParam('pushButtonCC', Math.max(0, Math.min(127, Number(e.target.value))))}
+                className={`w-20 px-3 py-1.5 border rounded ${theme.inputBg} ${theme.textSecondary} text-center focus:outline-none`}
+              />
+            </div>
+          </div>
+
+          {/* Slider Settings */}
+          <div className="flex items-center justify-between mt-3">
+            <label className={`text-sm ${theme.textSecondary}`}>Slider Channel</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                value={getIntParam('sliderChannel', 0) + 1}
+                onChange={(e) => setParam('sliderChannel', Math.max(0, Math.min(15, Number(e.target.value) - 1)))}
+                className={`w-20 px-3 py-1.5 border rounded ${theme.inputBg} ${theme.textSecondary} text-center focus:outline-none`}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between mt-2">
+            <label className={`text-sm ${theme.textSecondary}`}>Slider CC</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                value={getIntParam('sliderCC', 6)}
+                onChange={(e) => setParam('sliderCC', Math.max(0, Math.min(127, Number(e.target.value))))}
+                className={`w-20 px-3 py-1.5 border rounded ${theme.inputBg} ${theme.textSecondary} text-center focus:outline-none`}
+              />
+            </div>
+          </div>
+
         </div>
       ),
     },

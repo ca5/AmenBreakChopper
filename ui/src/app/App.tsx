@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { WaveformDisplay } from './components/WaveformDisplay';
 import { ControlPanel } from './components/ControlPanel';
+import { MidiController } from './components/MidiController';
 import { RotateCcw, Settings, ArrowLeft, ChevronDown } from 'lucide-react';
 import { useJuceBridge } from '../hooks/useJuceBridge';
+import { useSwipeable } from 'react-swipeable';
 import Ca5LogoPng from '../ca5logo.png';
 
 export default function App() {
@@ -14,6 +16,7 @@ export default function App() {
     new Set(Array.from({ length: 16 }, (_, i) => i)) // All slices active by default
   );
   const [colorTheme, setColorTheme] = useState<'green' | 'blue' | 'purple' | 'red' | 'orange' | 'cyan' | 'pink'>('green');
+  const [showMidiController, setShowMidiController] = useState(false);
 
   // Hoisted state for status display
   const [originalPlayhead, setOriginalPlayhead] = useState(0);
@@ -219,6 +222,26 @@ export default function App() {
   // Track selected sample name for UI display (deprecated, kept for compatibility)
   const [currentSample, setCurrentSample] = useState<string>('amen140.wav');
 
+  // MIDI Controller enabled state
+  const midiControllerEnabled = parameters['midiControllerEnabled'] !== undefined
+    ? parameters['midiControllerEnabled'] > 0.5
+    : false;
+
+  // Swipe handlers (vertical to avoid conflict with horizontal slider)
+  const swipeHandlers = useSwipeable({
+    onSwipedUp: () => {
+      if (midiControllerEnabled) {
+        setShowMidiController(true);
+      }
+    },
+    onSwipedDown: () => {
+      if (midiControllerEnabled) {
+        setShowMidiController(false);
+      }
+    },
+    trackMouse: true,
+  });
+
   return (
     <div className={`h-screen bg-gradient-to-br ${theme.bgGradient} flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]`}>
       {/* Header */}
@@ -305,8 +328,12 @@ export default function App() {
               triggeredPlayhead={triggeredPlayhead}
             />
 
-            {/* Performance Controls */}
-            <div className={`flex flex-col items-center justify-between px-4 py-3 gap-3 rounded-xl border ${theme.borderColor} ${theme.panelBg}`}>
+            {/* Performance Controls / MIDI Controller */}
+            <div {...swipeHandlers} className={`flex flex-col items-center justify-between px-4 py-3 gap-3 rounded-xl border ${theme.borderColor} ${theme.panelBg}`}>
+              {showMidiController && midiControllerEnabled ? (
+                <MidiController colorTheme={colorTheme} />
+              ) : (
+                <>
               <div className="flex items-center gap-4 w-full justify-between">
                 <span className={`text-xs font-bold tracking-wider ${theme.textSecondary}`}>TIMING</span>
 
@@ -362,6 +389,8 @@ export default function App() {
                   <span className={`text-[10px] ${theme.textSecondary} ml-0.5 mr-2`}>ms</span>
                 </div>
               </div>
+                </>
+              )}
             </div>
           </>
         ) : (
