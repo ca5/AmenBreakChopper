@@ -5,7 +5,6 @@ import { MidiController } from './components/MidiController';
 import { ToggleButtons } from './components/ToggleButtons';
 import { RotateCcw, Settings, ArrowLeft, ChevronDown } from 'lucide-react';
 import { useJuceBridge } from '../hooks/useJuceBridge';
-import { useSwipeable } from 'react-swipeable';
 import Ca5LogoPng from '../ca5logo.png';
 
 export default function App() {
@@ -228,28 +227,7 @@ export default function App() {
     ? parameters['midiControllerEnabled'] > 0.5
     : false;
 
-  // Swipe handlers (vertical to cycle through 3 screens)
-  const swipeHandlers = useSwipeable({
-    onSwipedUp: () => {
-      if (midiControllerEnabled) {
-        if (currentScreen === 'timing') {
-          setCurrentScreen('midi');
-        } else if (currentScreen === 'midi') {
-          setCurrentScreen('toggle');
-        }
-      }
-    },
-    onSwipedDown: () => {
-      if (midiControllerEnabled) {
-        if (currentScreen === 'toggle') {
-          setCurrentScreen('midi');
-        } else if (currentScreen === 'midi') {
-          setCurrentScreen('timing');
-        }
-      }
-    },
-    trackMouse: true,
-  });
+
 
   return (
     <div className={`h-screen bg-gradient-to-br ${theme.bgGradient} flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]`}>
@@ -337,12 +315,37 @@ export default function App() {
               triggeredPlayhead={triggeredPlayhead}
             />
 
-            {/* Performance Controls / MIDI Controller / Toggle Buttons */}
-            <div {...swipeHandlers} className={`flex flex-col items-center justify-between px-4 py-3 gap-3 rounded-xl border ${theme.borderColor} ${theme.panelBg}`}>
+            {/* Performance Controls / MIDI Controller */}
+            <div className={`flex flex-col items-center justify-between px-4 py-3 gap-3 rounded-xl border ${theme.borderColor} ${theme.panelBg}`}>
+              {/* Tab Navigation - Only show when MIDI Controller is enabled */}
+              {midiControllerEnabled && (
+                <div className="flex gap-2 w-full border-b border-slate-700/30 pb-2">
+                  <button
+                    onClick={() => setCurrentScreen('timing')}
+                    className={`flex-1 px-4 py-2 rounded-lg text-xs font-bold tracking-wider transition-all ${
+                      currentScreen === 'timing'
+                        ? `${theme.buttonBg.replace('hover:', '')} ${theme.textPrimary} border-2 ${theme.borderColor}`
+                        : `bg-slate-800/30 ${theme.textSecondary} border-2 border-transparent hover:bg-slate-800/50`
+                    }`}
+                  >
+                    TIMING
+                  </button>
+                  <button
+                    onClick={() => setCurrentScreen('midi')}
+                    className={`flex-1 px-4 py-2 rounded-lg text-xs font-bold tracking-wider transition-all ${
+                      currentScreen === 'midi'
+                        ? `${theme.buttonBg.replace('hover:', '')} ${theme.textPrimary} border-2 ${theme.borderColor}`
+                        : `bg-slate-800/30 ${theme.textSecondary} border-2 border-transparent hover:bg-slate-800/50`
+                    }`}
+                  >
+                    MIDI
+                  </button>
+                </div>
+              )}
+
+              {/* Content Area */}
               {currentScreen === 'midi' && midiControllerEnabled ? (
                 <MidiController colorTheme={colorTheme} />
-              ) : currentScreen === 'toggle' && midiControllerEnabled ? (
-                <ToggleButtons colorTheme={colorTheme} />
               ) : (
                 <>
               <div className="flex items-center gap-4 w-full justify-between">
@@ -403,6 +406,9 @@ export default function App() {
                 </>
               )}
             </div>
+
+            {/* Channel Setting - Only visible when MIDI Controller is enabled */}
+            {midiControllerEnabled && <ToggleButtons colorTheme={colorTheme} />}
           </>
         ) : (
           <div className="space-y-6">
