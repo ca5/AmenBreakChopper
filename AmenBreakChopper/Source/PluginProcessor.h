@@ -131,6 +131,7 @@ public:
   std::atomic<bool> mWaveformDirty{true};
 
   void loadBuiltInSample(const juce::String& resourceName);
+  void sendMidiCC(int channel, int ccNumber, int value);
 
 private:
   //==============================================================================
@@ -201,6 +202,10 @@ private:
   void oscMessageReceived(const juce::OSCMessage &message) override;
 
   bool shouldTriggerReset(int mode, int previousValue, int currentValue);
+  
+  // --- MIDI CC Output Queue (Thread-Safe) ---
+  juce::CriticalSection mMidiCcQueueLock;
+  juce::MidiBuffer mMidiCcOutputQueue;
   
   // Initialization flag
   bool mIsInitialized { false };

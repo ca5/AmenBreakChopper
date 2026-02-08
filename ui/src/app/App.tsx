@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { WaveformDisplay } from './components/WaveformDisplay';
 import { ControlPanel } from './components/ControlPanel';
 import { MidiController } from './components/MidiController';
+import { MidiControllerAdvanced } from './components/MidiControllerAdvanced';
 import { ToggleButtons } from './components/ToggleButtons';
 import { RotateCcw, Settings, ArrowLeft, ChevronDown } from 'lucide-react';
 import { useJuceBridge } from '../hooks/useJuceBridge';
@@ -17,6 +18,7 @@ export default function App() {
   );
   const [colorTheme, setColorTheme] = useState<'green' | 'blue' | 'purple' | 'red' | 'orange' | 'cyan' | 'pink'>('green');
   const [currentScreen, setCurrentScreen] = useState<'timing' | 'midi' | 'toggle'>('timing');
+  const [viewMode, setViewMode] = useState<'waveform' | 'midiController'>('waveform');
 
   // Hoisted state for status display
   const [originalPlayhead, setOriginalPlayhead] = useState(0);
@@ -306,14 +308,32 @@ export default function App() {
       <main className="flex-1 flex flex-col p-6 gap-6 overflow-y-auto">
         {view === 'main' ? (
           <>
-            {/* Waveform Display */}
-            <WaveformDisplay
-              activeSlices={activeSlices}
-              isPlaying={isPlaying}
-              colorTheme={colorTheme}
-              originalPlayhead={originalPlayhead}
-              triggeredPlayhead={triggeredPlayhead}
-            />
+            {/* Waveform Display or MIDI Controller Advanced */}
+            <div className="relative">
+              {/* View Mode Toggle Button - Only show when MIDI Controller is enabled */}
+              {midiControllerEnabled && (
+                <div className="absolute top-2 left-2 z-10">
+                  <button
+                    onClick={() => setViewMode(viewMode === 'waveform' ? 'midiController' : 'waveform')}
+                    className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${theme.buttonSecondaryBg} ${theme.textPrimary} border ${theme.borderColor} shadow-md`}
+                  >
+                    {viewMode === 'waveform' ? 'MIDI' : 'Wave'}
+                  </button>
+                </div>
+              )}
+
+              {viewMode === 'waveform' ? (
+                <WaveformDisplay
+                  activeSlices={activeSlices}
+                  isPlaying={isPlaying}
+                  colorTheme={colorTheme}
+                  originalPlayhead={originalPlayhead}
+                  triggeredPlayhead={triggeredPlayhead}
+                />
+              ) : (
+                <MidiControllerAdvanced colorTheme={colorTheme} />
+              )}
+            </div>
 
             {/* Performance Controls / MIDI Controller */}
             <div className={`flex flex-col items-center justify-between px-4 py-3 gap-3 rounded-xl border ${theme.borderColor} ${theme.panelBg}`}>

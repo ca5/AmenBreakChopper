@@ -1308,6 +1308,15 @@ void AmenBreakChopperAudioProcessor::processBlock(
     }
   }
 
+  // Add MIDI CC messages from queue
+  {
+    const juce::ScopedLock sl(mMidiCcQueueLock);
+    for (const auto& metadata : mMidiCcOutputQueue) {
+      processedMidi.addEvent(metadata.getMessage(), metadata.samplePosition);
+    }
+    mMidiCcOutputQueue.clear();
+  }
+
   // Merge generated MIDI with output
   midiMessages.swapWith(processedMidi);
 }
@@ -1531,6 +1540,24 @@ void AmenBreakChopperAudioProcessor::loadBuiltInSample(const juce::String& resou
         mPendingBpm.store(120.0f);
         mPendingSampleSwitch.store(true);
     }
+}
+
+void AmenBreakChopperAudioProcessor::sendMidiCC(int channel, int ccNumber, int value) {
+  juce::Logger::writeToLog("sendMidiCC called - Channel: " + juce::String(channel) + 
+                           ", CC: " + juce::String(ccNumber) + 
+                           ", Value: " + juce::String(value));
+  
+  // Channel is 1-16 from UI, convert to 0-15 for JUCE
+  int midiChannel = channel - 1;
+  
+  // Create MIDI CC message
+  juce::MidiMessage ccMessage = juce::MidiMessage::controllerEvent(midiChannel, ccNumber, value);
+  
+  // Add to thread-safe queue
+  const juce::ScopedLock sl(mMidiCcQueueLock);
+  mMidiCcOutputQueue.addEvent(ccMessage, 0);
+  
+  juce::Logger::writeToLog("MIDI CC message added to queue successfully");
 }
 
 void AmenBreakChopperAudioProcessor::triggerNoteFromUi(int noteNumber) {

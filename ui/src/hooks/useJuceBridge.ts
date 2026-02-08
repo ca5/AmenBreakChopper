@@ -9,6 +9,7 @@ declare global {
 
         // Functions sent FROM JS to JUCE (Native Functions)
         sendParameterValue?: (id: string, value: number) => void;
+        sendMidiCC?: (channel: number, ccNumber: number, value: number) => void;
         performSequenceReset?: () => void;
         performSoftReset?: () => void;
         performHardReset?: () => void;
@@ -256,11 +257,24 @@ export const useJuceBridge = () => {
         }
     }, []);
 
+    const sendMidiCC = useCallback((channel: number, ccNumber: number, value: number) => {
+        console.log(`[Bridge] sendMidiCC: Channel ${channel}, CC ${ccNumber}, Value ${value}`);
+        if (window.sendMidiCC) {
+            window.sendMidiCC(channel, ccNumber, value);
+        } else if (window.__JUCE__?.postMessage) {
+            window.__JUCE__.postMessage(JSON.stringify({
+                eventId: "__juce__invoke",
+                payload: { name: "sendMidiCC", params: [channel, ccNumber, value], resultId: 0 }
+            }));
+        }
+    }, []);
+
     return {
         parameters,
         isStandalone,
         sendParameter,
         sendParameterValue: sendParameter, // Alias
+        sendMidiCC,
         addEventListener,
         performSequenceReset,
         performSoftReset,

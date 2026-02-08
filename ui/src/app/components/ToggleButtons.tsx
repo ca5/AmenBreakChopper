@@ -83,17 +83,17 @@ export function ToggleButtons({ colorTheme }: ToggleButtonsProps) {
   };
 
   return (
-    <div className={`flex flex-col gap-4 px-4 py-3 rounded-xl border ${theme.border} ${theme.panel}`}>
+    <div className={`flex flex-col gap-2 px-4 py-2 rounded-xl border ${theme.border} ${theme.panel}`}>
       {/* Toggle Buttons */}
       <div className="flex flex-col gap-2">
         <span className={`text-xs font-bold tracking-wider ${theme.textSecondary}`}>
           CHANNEL SETTING (EXT MIDI)
         </span>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-4 gap-2">
           {/* Toggle Button 1 (CC 30) */}
           <button
             onClick={() => handleToggle(1, toggleButton1)}
-            className={`aspect-square rounded-lg text-lg font-bold transition-all shadow-md ${
+            className={`h-8 rounded-lg text-sm font-bold transition-all shadow-md ${
               toggleButton1
                 ? `${theme.buttonActive} text-white`
                 : `${theme.buttonBg} ${theme.text}`
@@ -105,7 +105,7 @@ export function ToggleButtons({ colorTheme }: ToggleButtonsProps) {
           {/* Toggle Button 2 (CC 31) */}
           <button
             onClick={() => handleToggle(2, toggleButton2)}
-            className={`aspect-square rounded-lg text-lg font-bold transition-all shadow-md ${
+            className={`h-8 rounded-lg text-sm font-bold transition-all shadow-md ${
               toggleButton2
                 ? `${theme.buttonActive} text-white`
                 : `${theme.buttonBg} ${theme.text}`
@@ -117,7 +117,7 @@ export function ToggleButtons({ colorTheme }: ToggleButtonsProps) {
           {/* Toggle Button 3 (CC 32) */}
           <button
             onClick={() => handleToggle(3, toggleButton3)}
-            className={`aspect-square rounded-lg text-lg font-bold transition-all shadow-md ${
+            className={`h-8 rounded-lg text-sm font-bold transition-all shadow-md ${
               toggleButton3
                 ? `${theme.buttonActive} text-white`
                 : `${theme.buttonBg} ${theme.text}`
@@ -129,7 +129,7 @@ export function ToggleButtons({ colorTheme }: ToggleButtonsProps) {
           {/* Toggle Button 4 (CC 33) */}
           <button
             onClick={() => handleToggle(4, toggleButton4)}
-            className={`aspect-square rounded-lg text-lg font-bold transition-all shadow-md ${
+            className={`h-8 rounded-lg text-sm font-bold transition-all shadow-md ${
               toggleButton4
                 ? `${theme.buttonActive} text-white`
                 : `${theme.buttonBg} ${theme.text}`

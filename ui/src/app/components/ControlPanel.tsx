@@ -384,6 +384,60 @@ export function ControlPanel({ colorTheme, onThemeChange }: ControlPanelProps) {
             </div>
           </div>
 
+          <div className={`h-px ${theme.border} my-4`} />
+          <h4 className={`text-xs uppercase font-bold ${theme.textTertiary} mb-2`}>MIDI Controller Advanced</h4>
+
+          {/* MIDI Channel Advanced */}
+          <div className="flex items-center justify-between mb-3">
+            <label className={`text-sm ${theme.textSecondary}`}>MIDI Channel</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                value={getIntParam('midiChannelAdvanced', 1)}
+                onChange={(e) => setParam('midiChannelAdvanced', Math.max(1, Math.min(16, Number(e.target.value))))}
+                className={`w-20 px-3 py-1.5 border rounded ${theme.inputBg} ${theme.textSecondary} text-center focus:outline-none`}
+              />
+            </div>
+          </div>
+
+          {/* Fader CC Numbers */}
+          <div className="space-y-2">
+            <label className={`text-xs ${theme.textTertiary}`}>Fader CC Numbers</label>
+            
+            {[1, 2, 3, 4, 5].map((num) => (
+              <div key={num} className="flex items-center justify-between">
+                <span className={`text-xs ${theme.textSecondary}`}>Fader {num}</span>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={getIntParam(`ccFaderAdvanced${num}`, num <= 3 ? num : num + 10)}
+                    onChange={(e) => setParam(`ccFaderAdvanced${num}`, Math.max(0, Math.min(127, Number(e.target.value))))}
+                    className={`w-16 px-2 py-1 border rounded ${theme.inputBg} ${theme.textSecondary} text-center text-xs focus:outline-none`}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Toggle CC Numbers */}
+          <div className="space-y-2 mt-3">
+            <label className={`text-xs ${theme.textTertiary}`}>Toggle CC Numbers</label>
+            
+            {[1, 2].map((num) => (
+              <div key={num} className="flex items-center justify-between">
+                <span className={`text-xs ${theme.textSecondary}`}>Toggle {num}</span>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={getIntParam(`ccToggleAdvanced${num}`, num === 1 ? 0 : 12)}
+                    onChange={(e) => setParam(`ccToggleAdvanced${num}`, Math.max(0, Math.min(127, Number(e.target.value))))}
+                    className={`w-16 px-2 py-1 border rounded ${theme.inputBg} ${theme.textSecondary} text-center text-xs focus:outline-none`}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
         </div>
       ),
     },
