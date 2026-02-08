@@ -316,6 +316,10 @@ AmenBreakChopperAudioProcessor::createParameterLayout() {
   layout.add(std::make_unique<juce::AudioParameterInt>(
       "midiChannelAdvanced", "MIDI Channel Advanced", 1, 16, 1));
 
+  // MIDI Controller - Radio Button State (0-7)
+  layout.add(std::make_unique<juce::AudioParameterInt>(
+      "radioButtonState", "Radio Button State", 0, 8, 0));
+
   return layout;
 }
 
@@ -1343,6 +1347,26 @@ void AmenBreakChopperAudioProcessor::processBlock(
           toggleChannel + 1, 33, ccValue);
       processedMidi.addEvent(msg, 0);
       mLastToggleButton4 = toggleButton4;
+    }
+    
+    // Radio Button State (CC 50) - MIDI Controller
+    // Per controller.md spec: Value = floor(127/10 × index) where index is 1-8
+    int radioButtonState = (int)mValueTreeState.getRawParameterValue("radioButtonState")->load();
+    if (radioButtonState != mLastRadioButtonState) {
+      int ccValue;
+      if (radioButtonState == 0) {
+        // Button released: send 0
+        ccValue = 0;
+      } else {
+        // Button pressed: calculate value based on index (1-8)
+        // radioButtonState is 0-7 from UI, so add 1 to get 1-8
+        int index = radioButtonState + 1;
+        ccValue = static_cast<int>(std::floor(127.0 / 10.0 * index));
+      }
+      juce::MidiMessage msg = juce::MidiMessage::controllerEvent(
+          toggleChannel + 1, 50, ccValue);  // CC 50 per spec
+      processedMidi.addEvent(msg, 0);
+      mLastRadioButtonState = radioButtonState;
     }
     
     // --- MIDI Controller Advanced ---

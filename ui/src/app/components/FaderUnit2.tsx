@@ -27,9 +27,9 @@ export function FaderUnit2({
   colorTheme,
 }: FaderUnit2Props) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-1.5">
       {/* Two Faders */}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-1.5">
         <VerticalFader
           value={fader1Value}
           onChange={onFader1Change}

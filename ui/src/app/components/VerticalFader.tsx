@@ -74,7 +74,7 @@ export function VerticalFader({ value, onChange, ccNumber, label, colorTheme }: 
       <span className={`text-xs font-bold ${theme.textSecondary}`}>{label}</span>
       
       {/* Fader Container */}
-      <div className="relative flex items-center justify-center" style={{ height: '140px', width: '50px' }}>
+      <div className="relative flex items-center justify-center" style={{ height: '100px', width: '50px' }}>
         {/* Vertical Range Input */}
         <input
           type="range"
@@ -88,7 +88,7 @@ export function VerticalFader({ value, onChange, ccNumber, label, colorTheme }: 
           onTouchEnd={() => setShowValue(false)}
           className={`appearance-none cursor-pointer ${theme.thumb}`}
           style={{
-            width: '140px',
+            width: '100px',
             height: '8px',
             transform: 'rotate(-90deg)',
             transformOrigin: 'center',

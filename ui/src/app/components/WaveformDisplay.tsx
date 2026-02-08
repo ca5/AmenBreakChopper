@@ -273,8 +273,8 @@ export function WaveformDisplay({ activeSlices, isPlaying, colorTheme, originalP
   const [centerFill1, centerFill2] = theme.centerFill.split(',');
 
   return (
-    <div className={`flex-1 ${theme.panel} rounded-2xl p-4 border ${theme.border} backdrop-blur-sm`}>
-      <div className="h-full flex flex-col gap-3">
+    <div className={`flex-1 ${theme.panel} rounded-2xl p-2 border ${theme.border} backdrop-blur-sm`}>
+      <div className="h-full flex flex-col gap-1.5">
         {/* Title */}
         <div className="flex items-center justify-between">
           <h2 className={`${theme.text} font-medium`}></h2>
@@ -389,9 +389,6 @@ export function WaveformDisplay({ activeSlices, isPlaying, colorTheme, originalP
         </div>
 
         {/* Instructions */}
-        <div className="text-xs text-green-400/50 text-center">
-          Tap slice to trigger • Click center to sync • Drag center to reset both to position 1
-        </div>
       </div>
     </div>
   );

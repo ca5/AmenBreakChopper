@@ -187,6 +187,7 @@ private:
   bool mLastToggleButton2{false};
   bool mLastToggleButton3{false};
   bool mLastToggleButton4{false};
+  int mLastRadioButtonState{0};
 
   // --- MIDI Controller Advanced State ---
   float mLastFaderAdvanced1{-1.0f};

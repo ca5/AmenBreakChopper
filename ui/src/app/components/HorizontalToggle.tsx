@@ -68,7 +68,7 @@ export function HorizontalToggle({ isOn, onToggle, ccNumber, label, colorTheme }
       {/* Toggle Button */}
       <button
         onClick={onToggle}
-        className={`w-full py-3 rounded-lg text-sm font-bold transition-all shadow-md ${
+        className={`w-full py-2 rounded-lg text-sm font-bold transition-all shadow-md ${
           isOn
             ? `${theme.buttonOn} text-white`
             : `${theme.buttonOff} ${theme.text}`

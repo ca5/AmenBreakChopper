@@ -114,15 +114,15 @@ export function MidiControllerAdvanced({ colorTheme }: MidiControllerAdvancedPro
   const [activeUnit, setActiveUnit] = useState<1 | 2>(1);
 
   return (
-    <div className={`flex flex-col gap-3 px-4 py-2 rounded-xl border ${theme.border} ${theme.panel}`}>
+    <div className={`flex flex-col gap-2 px-3 py-1.5 rounded-xl border ${theme.border} ${theme.panel}`}>
       {/* Title */}
-      <h2 className={`text-sm font-bold ${theme.text} text-center`}>MIDI Controller Advanced</h2>
+      <h2 className={`text-xs font-bold ${theme.text} text-center`}> </h2>
 
       {/* Unit Tabs */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 mt-8">
         <button
           onClick={() => setActiveUnit(1)}
-          className={`flex-1 px-3 py-1 rounded-md text-xs font-bold transition-all ${
+          className={`flex-1 px-2 py-0.5 rounded-md text-xs font-bold transition-all ${
             activeUnit === 1
               ? `${theme.panel.replace('/30', '/50')} ${theme.text} border ${theme.border}`
               : `bg-slate-900/30 text-slate-400 border border-slate-700/30`
@@ -132,7 +132,7 @@ export function MidiControllerAdvanced({ colorTheme }: MidiControllerAdvancedPro
         </button>
         <button
           onClick={() => setActiveUnit(2)}
-          className={`flex-1 px-3 py-1 rounded-md text-xs font-bold transition-all ${
+          className={`flex-1 px-2 py-0.5 rounded-md text-xs font-bold transition-all ${
             activeUnit === 2
               ? `${theme.panel.replace('/30', '/50')} ${theme.text} border ${theme.border}`
               : `bg-slate-900/30 text-slate-400 border border-slate-700/30`

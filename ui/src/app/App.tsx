@@ -305,7 +305,7 @@ export default function App() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col p-6 gap-6 overflow-y-auto">
+      <main className="flex-1 flex flex-col p-6 gap-2 overflow-y-auto">
         {view === 'main' ? (
           <>
             {/* Waveform Display or MIDI Controller Advanced */}
@@ -317,7 +317,7 @@ export default function App() {
                     onClick={() => setViewMode(viewMode === 'waveform' ? 'midiController' : 'waveform')}
                     className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${theme.buttonSecondaryBg} ${theme.textPrimary} border ${theme.borderColor} shadow-md`}
                   >
-                    {viewMode === 'waveform' ? 'MIDI' : 'Wave'}
+                    {viewMode === 'waveform' ? 'Wave' : 'MIDI Controller Advanced'}
                   </button>
                 </div>
               )}
@@ -336,40 +336,29 @@ export default function App() {
             </div>
 
             {/* Performance Controls / MIDI Controller */}
-            <div className={`flex flex-col items-center justify-between px-4 py-3 gap-3 rounded-xl border ${theme.borderColor} ${theme.panelBg}`}>
-              {/* Tab Navigation - Only show when MIDI Controller is enabled */}
-              {midiControllerEnabled && (
-                <div className="flex gap-2 w-full border-b border-slate-700/30 pb-2">
-                  <button
-                    onClick={() => setCurrentScreen('timing')}
-                    className={`flex-1 px-4 py-2 rounded-lg text-xs font-bold tracking-wider transition-all ${
-                      currentScreen === 'timing'
-                        ? `${theme.buttonBg.replace('hover:', '')} ${theme.textPrimary} border-2 ${theme.borderColor}`
-                        : `bg-slate-800/30 ${theme.textSecondary} border-2 border-transparent hover:bg-slate-800/50`
-                    }`}
-                  >
-                    TIMING
-                  </button>
-                  <button
-                    onClick={() => setCurrentScreen('midi')}
-                    className={`flex-1 px-4 py-2 rounded-lg text-xs font-bold tracking-wider transition-all ${
-                      currentScreen === 'midi'
-                        ? `${theme.buttonBg.replace('hover:', '')} ${theme.textPrimary} border-2 ${theme.borderColor}`
-                        : `bg-slate-800/30 ${theme.textSecondary} border-2 border-transparent hover:bg-slate-800/50`
-                    }`}
-                  >
-                    MIDI
-                  </button>
-                </div>
-              )}
+            <div className={`flex flex-col items-center justify-between px-3 py-2 gap-2 rounded-xl border ${theme.borderColor} ${theme.panelBg}`}>
+              {/* Titles are now clickable - No separate toggle button needed */}
 
               {/* Content Area */}
               {currentScreen === 'midi' && midiControllerEnabled ? (
-                <MidiController colorTheme={colorTheme} />
+                <MidiController 
+                  colorTheme={colorTheme} 
+                  onSwitchToTiming={() => setCurrentScreen('timing')}
+                />
               ) : (
                 <>
-              <div className="flex items-center gap-4 w-full justify-between">
-                <span className={`text-xs font-bold tracking-wider ${theme.textSecondary}`}>TIMING</span>
+              <div className="flex items-center gap-2 w-full justify-between">
+                {midiControllerEnabled && (
+                  <button
+                    onClick={() => setCurrentScreen('midi')}
+                    className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${theme.buttonSecondaryBg} ${theme.textPrimary} border ${theme.borderColor}`}
+                  >
+                    TIMING
+                  </button>
+                )}
+                {!midiControllerEnabled && (
+                  <span className={`text-xs font-bold tracking-wider ${theme.textSecondary}`}>TIMING</span>
+                )}
 
                 <div className="flex items-center gap-2">
                   <button
@@ -377,50 +366,50 @@ export default function App() {
                       performHardReset();
                       handleResetDelayAdjust();
                     }}
-                    className="px-4 py-1.5 rounded-md bg-red-600 hover:bg-red-500 text-white font-bold text-sm shadow-sm transition-transform active:scale-95 flex items-center gap-2"
+                    className="px-3 py-1 rounded-md bg-red-600 hover:bg-red-500 text-white font-bold text-xs shadow-sm transition-transform active:scale-95 flex items-center gap-1.5"
                     title="Hard Reset & Zero Adjust"
                   >
-                    <RotateCcw className="w-4 h-4" />
+                    <RotateCcw className="w-3 h-3" />
                     <span>HARD RESET</span>
                   </button>
                 </div>
               </div>
-              <div className="flex items-center gap-4 w-full justify-end">
-                <div className="flex items-center gap-2 flex-1 max-w-xl bg-slate-900/40 p-1.5 rounded-lg border border-slate-700/30">
+              <div className="flex items-center gap-2 w-full justify-end">
+                <div className="flex items-center gap-1.5 flex-1 max-w-xl bg-slate-900/40 p-1 rounded-lg border border-slate-700/30">
                   <button
                     onClick={() => sendParameter('delayAdjust', Math.max(-1000, delayAdjustValue - 10))}
-                    className={`px-2 py-1.5 rounded hover:bg-white/10 ${theme.textSecondary} transition-colors font-mono text-xs`}
+                    className={`px-1.5 py-1 rounded hover:bg-white/10 ${theme.textSecondary} transition-colors font-mono text-xs`}
                   >
                     &lt;
                   </button>
 
-                  <div className="flex-1 px-2">
+                  <div className="flex-1 px-1.5">
                     <input
                       type="range"
                       min="-1000"
                       max="1000"
                       value={delayAdjustValue}
                       onChange={(e) => sendParameter('delayAdjust', Number(e.target.value))}
-                      className={`w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer ${theme.accentColor === 'text-green-400' ? 'accent-green-500' : theme.accentColor === 'text-blue-400' ? 'accent-blue-500' : theme.accentColor === 'text-purple-400' ? 'accent-purple-500' : theme.accentColor === 'text-red-400' ? 'accent-red-500' : theme.accentColor === 'text-orange-400' ? 'accent-orange-500' : theme.accentColor === 'text-cyan-400' ? 'accent-cyan-500' : 'accent-pink-500'}`}
+                      className={`w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer ${theme.accentColor === 'text-green-400' ? 'accent-green-500' : theme.accentColor === 'text-blue-400' ? 'accent-blue-500' : theme.accentColor === 'text-purple-400' ? 'accent-purple-500' : theme.accentColor === 'text-red-400' ? 'accent-red-500' : theme.accentColor === 'text-orange-400' ? 'accent-orange-500' : theme.accentColor === 'text-cyan-400' ? 'accent-cyan-500' : 'accent-pink-500'}`}
                     />
                   </div>
 
                   <button
                     onClick={() => sendParameter('delayAdjust', Math.min(1000, delayAdjustValue + 10))}
-                    className={`px-2 py-1.5 rounded hover:bg-white/10 ${theme.textSecondary} transition-colors font-mono text-xs`}
+                    className={`px-1.5 py-1 rounded hover:bg-white/10 ${theme.textSecondary} transition-colors font-mono text-xs`}
                   >
                     &gt;
                   </button>
 
-                  <div className="w-px h-4 bg-slate-600/50 mx-1"></div>
+                  <div className="w-px h-3 bg-slate-600/50 mx-0.5"></div>
 
                   <input
                     type="number"
                     value={delayAdjustValue}
                     onChange={(e) => sendParameter('delayAdjust', Math.min(1000, Math.max(-1000, Number(e.target.value))))}
-                    className="w-16 bg-transparent text-right font-mono text-xs focus:outline-none text-slate-200"
+                    className="w-14 bg-transparent text-right font-mono text-xs focus:outline-none text-slate-200"
                   />
-                  <span className={`text-[10px] ${theme.textSecondary} ml-0.5 mr-2`}>ms</span>
+                  <span className={`text-[10px] ${theme.textSecondary} ml-0.5 mr-1`}>ms</span>
                 </div>
               </div>
                 </>
