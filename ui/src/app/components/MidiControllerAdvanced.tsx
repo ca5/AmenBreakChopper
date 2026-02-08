@@ -9,7 +9,7 @@ interface MidiControllerAdvancedProps {
 }
 
 export function MidiControllerAdvanced({ colorTheme }: MidiControllerAdvancedProps) {
-  const { parameters, sendParameter, sendMidiCC } = useJuceBridge();
+  const { parameters, sendParameter } = useJuceBridge();
 
   // Get current values from parameters (0.0-1.0, convert to 0-127)
   const fader1Value = Math.round((parameters['faderAdvanced1'] || 0) * 127);
@@ -34,46 +34,39 @@ export function MidiControllerAdvanced({ colorTheme }: MidiControllerAdvancedPro
   // Handlers - use sendMidiCC directly
   const handleFader1Change = (value: number) => {
     console.log('[MIDI Advanced UI] Fader 1 changed:', value);
-    sendParameter('faderAdvanced1', value / 127); // Update UI state
-    sendMidiCC(midiChannel, ccFader1, value); // Send MIDI CC
+    sendParameter('faderAdvanced1', value / 127);
   };
 
   const handleFader2Change = (value: number) => {
     console.log('[MIDI Advanced UI] Fader 2 changed:', value);
     sendParameter('faderAdvanced2', value / 127);
-    sendMidiCC(midiChannel, ccFader2, value);
   };
 
   const handleFader3Change = (value: number) => {
     console.log('[MIDI Advanced UI] Fader 3 changed:', value);
     sendParameter('faderAdvanced3', value / 127);
-    sendMidiCC(midiChannel, ccFader3, value);
   };
 
   const handleFader4Change = (value: number) => {
     console.log('[MIDI Advanced UI] Fader 4 changed:', value);
     sendParameter('faderAdvanced4', value / 127);
-    sendMidiCC(midiChannel, ccFader4, value);
   };
 
   const handleFader5Change = (value: number) => {
     console.log('[MIDI Advanced UI] Fader 5 changed:', value);
     sendParameter('faderAdvanced5', value / 127);
-    sendMidiCC(midiChannel, ccFader5, value);
   };
 
   const handleToggle1 = () => {
     console.log('[MIDI Advanced UI] Toggle 1 clicked, current state:', toggle1State);
     const newState = toggle1State ? 0 : 1;
     sendParameter('toggleAdvanced1', newState);
-    sendMidiCC(midiChannel, ccToggle1, newState * 127);
   };
 
   const handleToggle2 = () => {
     console.log('[MIDI Advanced UI] Toggle 2 clicked, current state:', toggle2State);
     const newState = toggle2State ? 0 : 1;
     sendParameter('toggleAdvanced2', newState);
-    sendMidiCC(midiChannel, ccToggle2, newState * 127);
   };
 
   // Theme colors for panel

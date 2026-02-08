@@ -278,6 +278,44 @@ AmenBreakChopperAudioProcessor::createParameterLayout() {
   layout.add(std::make_unique<juce::AudioParameterBool>(
       "toggleButton4", "Toggle Button 4", false));
 
+  // MIDI Controller Advanced - Fader Values (0.0-1.0)
+  layout.add(std::make_unique<juce::AudioParameterFloat>(
+      "faderAdvanced1", "Fader Advanced 1", 0.0f, 1.0f, 0.0f));
+  layout.add(std::make_unique<juce::AudioParameterFloat>(
+      "faderAdvanced2", "Fader Advanced 2", 0.0f, 1.0f, 0.0f));
+  layout.add(std::make_unique<juce::AudioParameterFloat>(
+      "faderAdvanced3", "Fader Advanced 3", 0.0f, 1.0f, 0.0f));
+  layout.add(std::make_unique<juce::AudioParameterFloat>(
+      "faderAdvanced4", "Fader Advanced 4", 0.0f, 1.0f, 0.0f));
+  layout.add(std::make_unique<juce::AudioParameterFloat>(
+      "faderAdvanced5", "Fader Advanced 5", 0.0f, 1.0f, 0.0f));
+
+  // MIDI Controller Advanced - Toggle States (0 or 1)
+  layout.add(std::make_unique<juce::AudioParameterFloat>(
+      "toggleAdvanced1", "Toggle Advanced 1", 0.0f, 1.0f, 0.0f));
+  layout.add(std::make_unique<juce::AudioParameterFloat>(
+      "toggleAdvanced2", "Toggle Advanced 2", 0.0f, 1.0f, 0.0f));
+
+  // MIDI Controller Advanced - CC Number Settings
+  layout.add(std::make_unique<juce::AudioParameterInt>(
+      "ccFaderAdvanced1", "CC Fader Advanced 1", 0, 127, 1));
+  layout.add(std::make_unique<juce::AudioParameterInt>(
+      "ccFaderAdvanced2", "CC Fader Advanced 2", 0, 127, 2));
+  layout.add(std::make_unique<juce::AudioParameterInt>(
+      "ccFaderAdvanced3", "CC Fader Advanced 3", 0, 127, 3));
+  layout.add(std::make_unique<juce::AudioParameterInt>(
+      "ccFaderAdvanced4", "CC Fader Advanced 4", 0, 127, 13));
+  layout.add(std::make_unique<juce::AudioParameterInt>(
+      "ccFaderAdvanced5", "CC Fader Advanced 5", 0, 127, 14));
+  layout.add(std::make_unique<juce::AudioParameterInt>(
+      "ccToggleAdvanced1", "CC Toggle Advanced 1", 0, 127, 0));
+  layout.add(std::make_unique<juce::AudioParameterInt>(
+      "ccToggleAdvanced2", "CC Toggle Advanced 2", 0, 127, 12));
+
+  // MIDI Controller Advanced - MIDI Channel (1-16)
+  layout.add(std::make_unique<juce::AudioParameterInt>(
+      "midiChannelAdvanced", "MIDI Channel Advanced", 1, 16, 1));
+
   return layout;
 }
 
@@ -1306,15 +1344,56 @@ void AmenBreakChopperAudioProcessor::processBlock(
       processedMidi.addEvent(msg, 0);
       mLastToggleButton4 = toggleButton4;
     }
-  }
-
-  // Add MIDI CC messages from queue
-  {
-    const juce::ScopedLock sl(mMidiCcQueueLock);
-    for (const auto& metadata : mMidiCcOutputQueue) {
-      processedMidi.addEvent(metadata.getMessage(), metadata.samplePosition);
+    
+    // --- MIDI Controller Advanced ---
+    int midiChannelAdvanced = (int)mValueTreeState.getRawParameterValue("midiChannelAdvanced")->load();
+    
+    // Faders (5 faders)
+    for (int i = 1; i <= 5; ++i) {
+      juce::String faderParamId = "faderAdvanced" + juce::String(i);
+      juce::String ccParamId = "ccFaderAdvanced" + juce::String(i);
+      
+      float faderValue = mValueTreeState.getRawParameterValue(faderParamId)->load();
+      float* lastValue = nullptr;
+      
+      if (i == 1) lastValue = &mLastFaderAdvanced1;
+      else if (i == 2) lastValue = &mLastFaderAdvanced2;
+      else if (i == 3) lastValue = &mLastFaderAdvanced3;
+      else if (i == 4) lastValue = &mLastFaderAdvanced4;
+      else if (i == 5) lastValue = &mLastFaderAdvanced5;
+      
+      if (lastValue && std::abs(faderValue - *lastValue) > 0.008f) {
+        int ccNumber = (int)mValueTreeState.getRawParameterValue(ccParamId)->load();
+        int ccValue = static_cast<int>(faderValue * 127.0f);
+        ccValue = std::max(0, std::min(127, ccValue));
+        
+        juce::MidiMessage msg = juce::MidiMessage::controllerEvent(
+            midiChannelAdvanced, ccNumber, ccValue);
+        processedMidi.addEvent(msg, 0);
+        
+        *lastValue = faderValue;
+      }
     }
-    mMidiCcOutputQueue.clear();
+    
+    // Toggles (2 toggles)
+    for (int i = 1; i <= 2; ++i) {
+      juce::String toggleParamId = "toggleAdvanced" + juce::String(i);
+      juce::String ccParamId = "ccToggleAdvanced" + juce::String(i);
+      
+      bool toggleState = mValueTreeState.getRawParameterValue(toggleParamId)->load() > 0.5f;
+      bool* lastState = (i == 1) ? &mLastToggleAdvanced1 : &mLastToggleAdvanced2;
+      
+      if (toggleState != *lastState) {
+        int ccNumber = (int)mValueTreeState.getRawParameterValue(ccParamId)->load();
+        int ccValue = toggleState ? 127 : 0;
+        
+        juce::MidiMessage msg = juce::MidiMessage::controllerEvent(
+            midiChannelAdvanced, ccNumber, ccValue);
+        processedMidi.addEvent(msg, 0);
+        
+        *lastState = toggleState;
+      }
+    }
   }
 
   // Merge generated MIDI with output
@@ -1540,24 +1619,6 @@ void AmenBreakChopperAudioProcessor::loadBuiltInSample(const juce::String& resou
         mPendingBpm.store(120.0f);
         mPendingSampleSwitch.store(true);
     }
-}
-
-void AmenBreakChopperAudioProcessor::sendMidiCC(int channel, int ccNumber, int value) {
-  juce::Logger::writeToLog("sendMidiCC called - Channel: " + juce::String(channel) + 
-                           ", CC: " + juce::String(ccNumber) + 
-                           ", Value: " + juce::String(value));
-  
-  // Channel is 1-16 from UI, convert to 0-15 for JUCE
-  int midiChannel = channel - 1;
-  
-  // Create MIDI CC message
-  juce::MidiMessage ccMessage = juce::MidiMessage::controllerEvent(midiChannel, ccNumber, value);
-  
-  // Add to thread-safe queue
-  const juce::ScopedLock sl(mMidiCcQueueLock);
-  mMidiCcOutputQueue.addEvent(ccMessage, 0);
-  
-  juce::Logger::writeToLog("MIDI CC message added to queue successfully");
 }
 
 void AmenBreakChopperAudioProcessor::triggerNoteFromUi(int noteNumber) {

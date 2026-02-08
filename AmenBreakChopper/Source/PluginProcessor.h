@@ -131,7 +131,6 @@ public:
   std::atomic<bool> mWaveformDirty{true};
 
   void loadBuiltInSample(const juce::String& resourceName);
-  void sendMidiCC(int channel, int ccNumber, int value);
 
 private:
   //==============================================================================
@@ -189,6 +188,15 @@ private:
   bool mLastToggleButton3{false};
   bool mLastToggleButton4{false};
 
+  // --- MIDI Controller Advanced State ---
+  float mLastFaderAdvanced1{-1.0f};
+  float mLastFaderAdvanced2{-1.0f};
+  float mLastFaderAdvanced3{-1.0f};
+  float mLastFaderAdvanced4{-1.0f};
+  float mLastFaderAdvanced5{-1.0f};
+  bool mLastToggleAdvanced1{false};
+  bool mLastToggleAdvanced2{false};
+
   // --- External Input & Clock State ---
   MidiClockTracker mMidiClockTracker;
   std::atomic<bool> mUsingMidiClock{false};
@@ -202,10 +210,6 @@ private:
   void oscMessageReceived(const juce::OSCMessage &message) override;
 
   bool shouldTriggerReset(int mode, int previousValue, int currentValue);
-  
-  // --- MIDI CC Output Queue (Thread-Safe) ---
-  juce::CriticalSection mMidiCcQueueLock;
-  juce::MidiBuffer mMidiCcOutputQueue;
   
   // Initialization flag
   bool mIsInitialized { false };

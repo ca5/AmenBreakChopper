@@ -203,25 +203,6 @@ AmenBreakChopperAudioProcessorEditor::AmenBreakChopperAudioProcessorEditor(
                     }
                     completion(juce::var());
                   })
-              // --- Register sendMidiCC ---
-              .withNativeFunction(
-                  "sendMidiCC",
-                  [this](const juce::Array<juce::var> &args,
-                         juce::WebBrowserComponent::NativeFunctionCompletion
-                             completion) {
-                    if (args.size() == 3 && args[0].isInt() && args[1].isInt() && args[2].isInt()) {
-                      int channel = static_cast<int>(args[0]);
-                      int ccNumber = static_cast<int>(args[1]);
-                      int value = static_cast<int>(args[2]);
-                      
-                      juce::Logger::writeToLog("Native sendMidiCC called - Channel: " + juce::String(channel) + 
-                                               ", CC: " + juce::String(ccNumber) + 
-                                               ", Value: " + juce::String(value));
-                      
-                      audioProcessor.sendMidiCC(channel, ccNumber, value);
-                    }
-                    completion(juce::var());
-                  })
               // --- Register Reset Commands ---
               .withNativeFunction(
                   "performSequenceReset",
