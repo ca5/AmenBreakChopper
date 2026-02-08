@@ -86,20 +86,13 @@ export function MidiController({ colorTheme, onSwitchToTiming }: MidiControllerP
   const radioButtonState = Math.round(parameters['radioButtonState'] || 0);
   const sliderValue = Math.round((parameters['sliderValue'] || 0) * 127);
 
-  // Debug state
-  const [debugInfo, setDebugInfo] = useState<string>('');
-
   // Radio button handlers - Unified logic for both Tap and Slide
-  const handleRadioButtonInteraction = (clientX: number, clientY: number, source: string) => {
-    let debugLog = `Source: ${source}\nPos: ${Math.round(clientX)}, ${Math.round(clientY)}\n`;
-
+  const handleRadioButtonInteraction = (clientX: number, clientY: number) => {
     // 1. Try elementFromPoint (High Precision)
     const element = document.elementFromPoint(clientX, clientY);
-    debugLog += `ElFromPoint: ${element ? element.tagName : 'null'}\n`;
     
     if (element) {
       const button = element.closest('[data-button-index]');
-      debugLog += `ClosestBtn: ${button ? parseInt(button.getAttribute('data-button-index')!) + 1 : 'null'}\n`;
       
       if (button) {
         const indexStr = button.getAttribute('data-button-index');
@@ -108,7 +101,6 @@ export function MidiController({ colorTheme, onSwitchToTiming }: MidiControllerP
           if (index >= 0 && index < 8) {
             setActiveButton(index);
             sendParameter('radioButtonState', index + 1);
-            setDebugInfo(debugLog + `Action: Select Button ${index + 1} (Element)`);
             return;
           }
         }
@@ -118,7 +110,6 @@ export function MidiController({ colorTheme, onSwitchToTiming }: MidiControllerP
     // 2. Fallback: Check Nearest Button Center (Robust against gaps/offsets)
     // This solves issues where the user taps slightly between buttons or outside the strict rect
     if (!radioGroupRef.current) {
-        setDebugInfo(debugLog + "Error: No Ref");
         return;
     }
     
@@ -153,11 +144,8 @@ export function MidiController({ colorTheme, onSwitchToTiming }: MidiControllerP
     if (nearestIndex >= 0 && minDistance < cutoffDistance) {
          setActiveButton(nearestIndex);
          sendParameter('radioButtonState', nearestIndex + 1);
-         setDebugInfo(debugLog + `Action: Select Button ${nearestIndex + 1} (Nearest: ${Math.round(minDistance)}px)`);
          return;
     }
-    
-    setDebugInfo(debugLog + "No hit detected");
   };
 
   const handleRadioButtonStart = (e: React.MouseEvent | React.TouchEvent) => {
@@ -170,7 +158,7 @@ export function MidiController({ colorTheme, onSwitchToTiming }: MidiControllerP
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     
     // Use the exact same logic as Move (Interaction)
-    handleRadioButtonInteraction(clientX, clientY, 'Start');
+    handleRadioButtonInteraction(clientX, clientY);
   };
 
   const handleRadioButtonMove = (e: React.MouseEvent | React.TouchEvent) => {
@@ -181,7 +169,7 @@ export function MidiController({ colorTheme, onSwitchToTiming }: MidiControllerP
     
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    handleRadioButtonInteraction(clientX, clientY, 'Move');
+    handleRadioButtonInteraction(clientX, clientY);
   };
 
   const handleRadioButtonEnd = () => {
@@ -241,10 +229,6 @@ export function MidiController({ colorTheme, onSwitchToTiming }: MidiControllerP
               {index + 1}
             </div>
           ))}
-        </div>
-        {/* Debug Overlay */}
-        <div className="absolute top-0 right-0 bg-black/80 text-green-400 text-[10px] p-1 pointer-events-none z-50 whitespace-pre font-mono max-w-[150px] opacity-70">
-          {debugInfo}
         </div>
       </div>
 
