@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 
 export type ThemeColor = 'green' | 'blue' | 'purple' | 'red' | 'orange' | 'cyan' | 'pink';
 
@@ -11,105 +11,167 @@ interface VerticalFaderProps {
 }
 
 export function VerticalFader({ value, onChange, ccNumber, label, colorTheme }: VerticalFaderProps) {
-  const [showValue, setShowValue] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const trackRef = useRef<HTMLDivElement>(null);
+  
+  // Refs for relative dragging to avoid closure staleness and re-renders
+  const dragStartY = useRef<number>(0);
+  const dragStartValue = useRef<number>(0);
 
   // Theme colors
   const themeColors = {
     green: {
       track: 'bg-green-900/30',
-      thumb: 'accent-green-600',
+      fill: 'bg-green-600',
+      thumb: 'bg-green-400',
       text: 'text-green-300',
       textSecondary: 'text-green-300/70',
-      valueBg: 'bg-green-600',
+      border: 'border-green-500/50',
     },
     blue: {
       track: 'bg-blue-900/30',
-      thumb: 'accent-blue-600',
+      fill: 'bg-blue-600',
+      thumb: 'bg-blue-400',
       text: 'text-blue-300',
       textSecondary: 'text-blue-300/70',
-      valueBg: 'bg-blue-600',
+      border: 'border-blue-500/50',
     },
     purple: {
       track: 'bg-purple-900/30',
-      thumb: 'accent-purple-600',
+      fill: 'bg-purple-600',
+      thumb: 'bg-purple-400',
       text: 'text-purple-300',
       textSecondary: 'text-purple-300/70',
-      valueBg: 'bg-purple-600',
+      border: 'border-purple-500/50',
     },
     red: {
       track: 'bg-red-900/30',
-      thumb: 'accent-red-600',
+      fill: 'bg-red-600',
+      thumb: 'bg-red-400',
       text: 'text-red-300',
       textSecondary: 'text-red-300/70',
-      valueBg: 'bg-red-600',
+      border: 'border-red-500/50',
     },
     orange: {
       track: 'bg-orange-900/30',
-      thumb: 'accent-orange-600',
+      fill: 'bg-orange-600',
+      thumb: 'bg-orange-400',
       text: 'text-orange-300',
       textSecondary: 'text-orange-300/70',
-      valueBg: 'bg-orange-600',
+      border: 'border-orange-500/50',
     },
     cyan: {
       track: 'bg-cyan-900/30',
-      thumb: 'accent-cyan-600',
+      fill: 'bg-cyan-600',
+      thumb: 'bg-cyan-400',
       text: 'text-cyan-300',
       textSecondary: 'text-cyan-300/70',
-      valueBg: 'bg-cyan-600',
+      border: 'border-cyan-500/50',
     },
     pink: {
       track: 'bg-pink-900/30',
-      thumb: 'accent-pink-600',
+      fill: 'bg-pink-600',
+      thumb: 'bg-pink-400',
       text: 'text-pink-300',
       textSecondary: 'text-pink-300/70',
-      valueBg: 'bg-pink-600',
+      border: 'border-pink-500/50',
     },
   };
 
   const theme = themeColors[colorTheme] || themeColors.green;
 
+  // Calculate percentage for display
+  const percentage = (value / 127) * 100;
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    e.preventDefault(); // Prevent default browser actions
+    e.currentTarget.setPointerCapture(e.pointerId);
+    
+    setIsDragging(true);
+    
+    // Record start state for relative dragging
+    dragStartY.current = e.clientY;
+    dragStartValue.current = value;
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (isDragging && trackRef.current) {
+        e.preventDefault();
+        
+        const rect = trackRef.current.getBoundingClientRect();
+        const trackHeight = rect.height;
+        
+        // Calculate delta Y (Up is negative in screen coords, but we want positive change)
+        // Dragging UP (smaller Y) should INCREASE value.
+        // DeltaY = StartY - CurrentY
+        // If StartY = 100, CurrentY = 90 (moved up 10px), Delta = 10
+        const deltaY = dragStartY.current - e.clientY;
+        
+        // Calculate value change scale
+        // Full height = 127 value steps (approx 1px = 1 step if height is ~120px)
+        const deltaValue = (deltaY / trackHeight) * 127;
+        
+        // Apply relative change
+        const newValue = Math.min(127, Math.max(0, Math.round(dragStartValue.current + deltaValue)));
+        
+        if (newValue !== value) {
+            onChange(newValue);
+        }
+    }
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    e.currentTarget.releasePointerCapture(e.pointerId);
+  };
+
   return (
-    <div className="flex flex-col items-center gap-1 relative">
+    <div className="flex flex-col items-center gap-1 relative select-none touch-none">
       {/* Label */}
       <span className={`text-xs font-bold ${theme.textSecondary}`}>{label}</span>
       
-      {/* Fader Container */}
-      <div className="relative flex items-center justify-center" style={{ height: '100px', width: '50px' }}>
-        {/* Vertical Range Input */}
-        <input
-          type="range"
-          min="0"
-          max="127"
-          value={value}
-          onChange={(e) => onChange(Number(e.target.value))}
-          onMouseDown={() => setShowValue(true)}
-          onMouseUp={() => setShowValue(false)}
-          onTouchStart={() => setShowValue(true)}
-          onTouchEnd={() => setShowValue(false)}
-          className={`appearance-none cursor-pointer ${theme.thumb}`}
-          style={{
-            width: '100px',
-            height: '8px',
-            transform: 'rotate(-90deg)',
-            transformOrigin: 'center',
-            background: `linear-gradient(to right, ${theme.track.includes('green') ? '#166534' : theme.track.includes('blue') ? '#1e3a8a' : theme.track.includes('purple') ? '#581c87' : theme.track.includes('red') ? '#7f1d1d' : theme.track.includes('orange') ? '#7c2d12' : theme.track.includes('cyan') ? '#164e63' : '#831843'} 0%, ${theme.track.includes('green') ? '#166534' : theme.track.includes('blue') ? '#1e3a8a' : theme.track.includes('purple') ? '#581c87' : theme.track.includes('red') ? '#7f1d1d' : theme.track.includes('orange') ? '#7c2d12' : theme.track.includes('cyan') ? '#164e63' : '#831843'} 100%)`,
-            borderRadius: '4px',
-          }}
+      {/* Fader Track Area */}
+      <div 
+        ref={trackRef}
+        className={`relative w-12 h-[120px] rounded-lg overflow-hidden cursor-pointer touch-none ${theme.track} border ${theme.border}`}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+      >
+        {/* Fill Level (Background of the active area) */}
+        <div 
+          className={`absolute bottom-0 left-0 right-0 ${theme.fill} opacity-30 pointer-events-none transition-all duration-75 ease-out`}
+          style={{ height: `${percentage}%` }}
         />
-        
-        {/* Value Display (Popup) */}
-        {showValue && (
-          <div className={`absolute top-0 right-0 px-2 py-1 rounded ${theme.valueBg} text-white text-xs font-bold shadow-lg z-10`}>
-            {value}
-          </div>
-        )}
+
+        {/* Thumb / Handle */}
+        <div 
+          className={`absolute left-0 right-0 h-8 rounded-sm mx-1 shadow-lg pointer-events-none transition-all duration-75 ease-out flex items-center justify-center border border-white/20 ${theme.thumb}`}
+          style={{ 
+            bottom: `calc(${percentage}% - 16px)`, // Center thumb on value
+            // Clamp thumb visual position to keep inside track
+            // Actually, standard fader behavior allows thumb center to hit 0 and 100%
+            // But visually we might want to constrain it slightly or let it overlap.
+            // Let's keep it simple: center of thumb represents value.
+          }}
+        >
+            {/* Grip lines */}
+            <div className="w-6 h-[1px] bg-black/30 mb-[2px]"></div>
+            <div className="w-6 h-[1px] bg-black/30 mt-[2px]"></div>
+        </div>
+
+        {/* Value Overlay (Always Visible while dragging or large enough to read) */}
+        <div className={`absolute inset-0 flex items-center justify-center pointer-events-none`}>
+            <span className={`text-xs font-bold font-mono drop-shadow-md ${isDragging ? 'text-white scale-125' : 'text-white/50'} transition-all`}>
+                {value}
+            </span>
+        </div>
       </div>
 
       {/* CC Number */}
       <span className={`text-[10px] ${theme.textSecondary}`}>CC {ccNumber}</span>
-      
-      {/* Current Value (Always Visible) */}
-      <span className={`text-xs font-mono ${theme.text}`}>{value}</span>
     </div>
   );
 }
